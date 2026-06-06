@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "recallsync-primary": {
+      "url": "https://mcp.recallsync.com/mcp",
+      "headers": {
+        "api_key": "<api-key>"
+      }
+    }
+  }
+}

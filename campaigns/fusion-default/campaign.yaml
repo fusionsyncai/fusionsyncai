@@ -1,0 +1,71 @@
+# Synced from RecallSync Campaign model via MCP (`get-campaign`).
+# AIOS configures campaigns up to DRAFT/TESTING. Activation (ACTIVE) is a
+# separate, explicitly approved step — see sops/campaign/configure-campaign.md.
+
+campaign:
+  id: 0b0043a8-5940-4422-84ae-132bc86fdac9
+  name: Fusion [DEFAULT]
+  description: Fusion [DEFAULT]
+  status: TESTING
+  businessId: 2c541e53-fa8b-4ca7-b587-575bdc36fb2a
+  agencyId: 75e69842-3931-4cd5-88c9-736d93a3b2ab
+  createdAt: 2025-08-29T08:30:59.508Z
+  updatedAt: 2025-09-18T08:10:58.986Z
+
+# RecallSync campaign settings. `primaryAgentId` is the main binding.
+settings:
+  primaryAgentId: a00d52ba-dc4e-4401-99a9-d122c6b01adb
+  timeZone: IST
+  withRetries: false
+  withFollowUp: false
+  retries: 3
+  maxRetryAttempts: 3
+  retryInterval: 2
+  retryIntervalType: hour
+  callBackDelay: 120
+  concurrentCalls: 1
+  startDate: 2025-09-03T08:52:56.024Z
+  startTime: "05:30"
+  workingHoursStart: "09:00"
+  workingHoursEnd: "17:00"
+  assistantIds: []
+  weeklySchedule:
+    monday:
+      enabled: true
+      timeSlots:
+        - startTime: "09:00"
+          endTime: "17:00"
+    tuesday:
+      enabled: true
+      timeSlots:
+        - startTime: "09:00"
+          endTime: "17:00"
+    wednesday:
+      enabled: true
+      timeSlots:
+        - startTime: "09:00"
+          endTime: "17:00"
+    thursday:
+      enabled: true
+      timeSlots:
+        - startTime: "09:00"
+          endTime: "17:00"
+    friday:
+      enabled: true
+      timeSlots:
+        - startTime: "09:00"
+          endTime: "17:00"
+    saturday:
+      enabled: false
+      timeSlots: []
+    sunday:
+      enabled: false
+      timeSlots: []
+
+synced: true
+last_synced_at: 2026-06-05T07:30:00Z
+sync:
+  source: recallsync
+  settings_updated: true
+  live_updated_at: 2025-09-18T08:10:58.986Z
+  last_pulled_at: 2026-06-05T07:30:00Z

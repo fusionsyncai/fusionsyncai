@@ -1,0 +1,40 @@
+# Copy this file to campaigns/<slug>/campaign.yaml and fill it in.
+# AIOS configures campaigns up to DRAFT/TESTING. Activation (ACTIVE) is a
+# separate, explicitly approved step — see sops/campaign/configure-campaign.md.
+
+campaign:
+  id: # RecallSync Campaign id (empty until create-campaign returns it)
+  name: # display name
+  description: # one or two lines on the objective / offer / audience
+  status: DRAFT # DRAFT | TESTING  (configuration never sets ACTIVE)
+  businessId: # mirrored from RecallSync after create (read-only)
+
+# What the campaign binds to and how it runs (RecallSync "settings").
+# primaryAgentId is the main binding — the agent that actually works the leads.
+settings:
+  primaryAgentId: # e.g. the Brain primary agent id (must belong to this business)
+  automationId: # optional automation cadence id (must belong to the selected primary agent)
+  timeZone: IST # IST | UTC | EST | ...
+  withRetries: false
+  maxRetryAttempts: 3 # 1-10 (only meaningful when withRetries: true)
+  retryInterval: 2 # 1-30
+  retryIntervalType: hour # hour | day
+  concurrentCalls: 1 # 1-10
+  assistantIds: [] # optional
+  weeklySchedule:
+    monday: { enabled: true, timeSlots: [{ startTime: "09:00", endTime: "17:00" }] }
+    tuesday: { enabled: true, timeSlots: [{ startTime: "09:00", endTime: "17:00" }] }
+    wednesday: { enabled: true, timeSlots: [{ startTime: "09:00", endTime: "17:00" }] }
+    thursday: { enabled: true, timeSlots: [{ startTime: "09:00", endTime: "17:00" }] }
+    friday: { enabled: true, timeSlots: [{ startTime: "09:00", endTime: "17:00" }] }
+    saturday: { enabled: false, timeSlots: [] }
+    sunday: { enabled: false, timeSlots: [] }
+
+# Sync metadata (mirrors RecallSync; managed by the configure/sync flow).
+synced: false
+last_synced_at:
+sync:
+  source: recallsync
+  settings_updated: false # true once configure-campaign-settings has run
+  live_updated_at:
+  last_pulled_at:

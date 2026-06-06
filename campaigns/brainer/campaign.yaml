@@ -1,0 +1,73 @@
+# Synced from RecallSync Campaign model via MCP (create-campaign + configure-campaign-settings).
+# AIOS configures campaigns up to DRAFT/TESTING. Activation (ACTIVE) is a
+# separate, explicitly approved step — see sops/campaign/configure-campaign.md.
+# Full objective / positioning / ICP / offer lives in brief.md (authored source).
+
+campaign:
+  id: 1af366ee-5197-4a6d-986a-f8c4d563094c
+  name: Brainer
+  # Live DB description is a flattened single-string copy of brief.md.
+  description: North Indian agency partnership outreach — position FusionSync AI as a technical implementation partner for agencies serving US/UK/Canada clients. See brief.md.
+  status: DRAFT
+  businessId: 2c541e53-fa8b-4ca7-b587-575bdc36fb2a
+  agencyId: 75e69842-3931-4cd5-88c9-736d93a3b2ab
+  createdAt: 2026-06-05T07:45:31.594Z
+  updatedAt: 2026-06-05T07:45:58.832Z
+
+# RecallSync campaign settings. `primaryAgentId` is the main binding (Brain).
+settings:
+  primaryAgentId: 1c7e7619-333c-461c-b9ba-377f96dc7b2d # Brain
+  timeZone: IST
+  withRetries: true
+  withFollowUp: false
+  retries: 3
+  maxRetryAttempts: 3
+  retryInterval: 2
+  retryIntervalType: hour
+  callBackDelay: 120 # legacy minutes (= retryInterval 2h)
+  concurrentCalls: 5
+  startDate:
+  startTime: "05:30"
+  workingHoursStart: "09:00"
+  workingHoursEnd: "17:00"
+  assistantIds: []
+  weeklySchedule:
+    monday:
+      enabled: true
+      timeSlots:
+        - startTime: "09:00"
+          endTime: "17:00"
+    tuesday:
+      enabled: true
+      timeSlots:
+        - startTime: "09:00"
+          endTime: "17:00"
+    wednesday:
+      enabled: true
+      timeSlots:
+        - startTime: "09:00"
+          endTime: "17:00"
+    thursday:
+      enabled: true
+      timeSlots:
+        - startTime: "09:00"
+          endTime: "17:00"
+    friday:
+      enabled: true
+      timeSlots:
+        - startTime: "09:00"
+          endTime: "17:00"
+    saturday:
+      enabled: false
+      timeSlots: []
+    sunday:
+      enabled: false
+      timeSlots: []
+
+synced: true
+last_synced_at: 2026-06-05T07:46:00Z
+sync:
+  source: recallsync
+  settings_updated: true
+  live_updated_at: 2026-06-05T07:45:58.832Z
+  last_pulled_at: 2026-06-05T07:46:00Z

@@ -1,0 +1,29 @@
+# Channel agent = RecallSync BaseAgent. Minimal link only. Behavior lives in the flow bundle.
+
+agent:
+  id: 406cbb17-34e9-4353-bc2d-a59df03bf109   # RecallSync BaseAgent.id
+  name: North India Outreach Email
+  channel: EMAIL
+  provider: N8N
+  baseAgentType: FLOW
+  n8nWorkflowId: c372cd48-f68e-4627-8c08-ee0cc1a3a9c9   # "Recall - Fusion - Send Email - SK Brevo"
+  isActive: false   # created paused; activate only after testing + approval
+
+# FLOW agents: behavior lives in the exported bundle, not a single prompt file.
+flow:
+  file: channel-agent-flow.json
+  entryNodeId: obj-outreach
+  nodes: 3 objectives (Outreach & Engage -> Explore Overlap & Offer Next Step -> Confirm & Hand Off)
+  campaign: north-india-dev-agency-outreach   # outreach driven by this campaign
+
+synced: true                     # currentFlow draft pushed via set-channel-agent-flow-draft
+published_flow_state: draft      # draft | diverged | published
+last_synced_at: 2026-06-05T09:10:10Z
+last_pulled_at:
+live_updated_at: 2026-06-05T09:10:10Z
+
+owner: vishal
+created: 2026-06-05
+updated: 2026-06-05
+changelog:
+  - "2026-06-05: created North India Outreach Email (FLOW, N8N Brevo email) on prod — id 406cbb17-34e9-4353-bc2d-a59df03bf109; pushed 3-objective outreach flow draft to currentFlow (not published, paused). Reused from dev Brain Email flow."

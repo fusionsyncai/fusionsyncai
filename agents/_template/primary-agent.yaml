@@ -1,0 +1,30 @@
+# Primary agent = wrapper grouping per-channel agents (RecallSync PrimaryAgent).
+# No prompt here — prompts live on each channel agent. Stores authored intent + linking id only.
+# Runtime config lives in RecallSync; fetch via API/MCP.
+
+primaryAgent:
+  id:                       # RecallSync PrimaryAgent.id — filled AFTER creation
+  name:                     # display name, e.g. "Real Estate Outreach Agent"
+  internalName: ""
+  type: RECALL              # RECALL | IGTHREADLY
+  description: >
+
+# Authored behavioral intent (what we manage from the brain)
+goal: >                     # -> PrimaryAgent.agentGoal
+goalCompleteCriteria: >     # -> PrimaryAgent.goalCompleteCriteria
+stopScenario: >             # -> PrimaryAgent.stopScenarioDescription
+
+# Calendar linkage — reference only (integration ids / secrets live in RecallSync)
+calendar:
+  type: CAL                 # CAL | CALENDLY | GHL
+  attached: false
+
+# Quick index of the channel agents (each is a <channel>/ folder beside this file)
+channelAgents:
+  - email
+
+owner:
+created:
+updated:
+changelog:
+  - "YYYY-MM-DD: created (draft)"

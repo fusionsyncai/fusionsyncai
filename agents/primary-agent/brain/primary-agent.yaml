@@ -1,0 +1,35 @@
+primaryAgent:
+  id: 1c7e7619-333c-461c-b9ba-377f96dc7b2d
+  name: Brain
+  internalName: ""
+  type: RECALL
+  description:
+
+# Authored behavioral intent (what we manage from the brain)
+goal:
+goalCompleteCriteria:
+stopScenario:
+
+# Calendar linkage — reference only (integration ids / secrets live in RecallSync)
+calendar:
+  type: CAL
+  attached: false
+
+# Quick index of the channel agents (each is a <channel>/ folder beside this file)
+channelAgents:
+  - channel: EMAIL
+    folder: email
+    id: 8579cb0d-99cb-4ada-ba6e-22904e1fd8c7
+    name: Brain Email
+    baseAgentType: FLOW
+    provider: N8N
+    isActive: false
+
+owner: vishal
+created: 2026-06-04
+updated: 2026-06-05
+changelog:
+  - "2026-06-04: mirrored live Brain primary agent from RecallSync"
+  - "2026-06-05: added instagram channel agent (FLOW, N8N) — id 71076938-336a-46bc-a7f6-a76f5235755d"
+  - "2026-06-05: cleanup — deleted all Brain channel agents (email/whatsapp/instagram) live + local mirrors; clean slate before rebuilding"
+  - "2026-06-05: created Brain Email (FLOW, N8N) — id 8579cb0d-99cb-4ada-ba6e-22904e1fd8c7; outreach flow draft pushed (paused), tied to Brainer campaign"

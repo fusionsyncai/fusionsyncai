@@ -1,0 +1,16 @@
+# Channel agent = RecallSync BaseAgent. Minimal link only. Behavior lives in channel-agent-prompt.md.
+# Copy this folder into agents/primary-agent/<primary-agent-name>/ and rename it to the channel
+# slug (email, sms, whatsapp, voice-call, ...).
+
+agent:
+  id:                      # RecallSync BaseAgent.id — filled AFTER creation
+  name:                    # e.g. "Brain Email Agent"
+  channel: EMAIL           # EMAIL | SMS | WHATSAPP | FACEBOOK | INSTAGRAM | LIVE_CHAT | VOICE_CALL | WP_VOICE_CALL
+  provider: GHL            # GHL | N8N | WHATSAPP | INSTAGRAM | TWILIO | VAPI | ...
+  baseAgentType: STANDARD  # STANDARD (single prompt) | FLOW (multi-prompt)
+
+prompt:
+  file: channel-agent-prompt.md
+
+synced: false             # has channel-agent-prompt.md been pushed to this RecallSync agent?
+last_synced_at:           # ISO 8601

@@ -1,0 +1,57 @@
+{
+  "nodes": [
+    {
+      "id": "trigger-1",
+      "type": "trigger",
+      "position": { "x": 100, "y": 200 },
+      "deletable": false,
+      "selectable": false,
+      "data": { "label": "Automation Trigger" }
+    },
+    {
+      "id": "email-1",
+      "type": "email",
+      "position": { "x": 450, "y": 200 },
+      "data": {
+        "label": "Email 1 — Intro",
+        "description": "Dummy intro email (placeholder copy)",
+        "emailSubject": "Quick hello from FusionSync",
+        "messageContent": "Hi there,\n\nThis is a placeholder intro email for the North India dev-agency outreach sequence. Real copy will replace this before the automation goes live.\n\n— Shubham, FusionSync AI",
+        "messageType": "static",
+        "emailType": "static",
+        "status": "initial"
+      }
+    },
+    {
+      "id": "wait-1",
+      "type": "wait",
+      "position": { "x": 800, "y": 200 },
+      "data": {
+        "label": "Wait 2 days",
+        "description": "Pause before the follow-up email",
+        "delayAmount": 2,
+        "delayUnit": "day",
+        "status": "initial"
+      }
+    },
+    {
+      "id": "email-2",
+      "type": "email",
+      "position": { "x": 1150, "y": 200 },
+      "data": {
+        "label": "Email 2 — Follow-up",
+        "description": "Dummy follow-up email (placeholder copy)",
+        "emailSubject": "Following up",
+        "messageContent": "Hi there,\n\nThis is a placeholder follow-up email, sent 2 days after the first if there's no reply. Real copy will replace this before launch.\n\n— Shubham, FusionSync AI",
+        "messageType": "static",
+        "emailType": "static",
+        "status": "initial"
+      }
+    }
+  ],
+  "edges": [
+    { "id": "edge-trigger-email1", "source": "trigger-1", "target": "email-1", "type": "deletable" },
+    { "id": "edge-email1-wait1", "source": "email-1", "target": "wait-1", "type": "deletable" },
+    { "id": "edge-wait1-email2", "source": "wait-1", "target": "email-2", "type": "deletable" }
+  ]
+}

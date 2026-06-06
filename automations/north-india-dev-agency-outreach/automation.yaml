@@ -1,0 +1,43 @@
+# AIOS mirror of a RecallSync automation.
+# The cadence itself lives beside this file in automation-flow.json.
+# See sops/automation/configure-automation.md.
+
+automation:
+  id: 9cca136d-db7c-4bb8-817b-6d3ac70ac59f
+  name: North India Dev Agency Outreach
+  description: >
+    Two-email outbound cadence for North Indian software/design agency partnership outreach.
+    Dummy copy for now: Email 1, wait 2 days, Email 2. Replies terminate the running
+    sequence server-side.
+  status: ACTIVE
+  businessId: 97f02e22-8758-4957-805f-1964da89419d
+
+# The worker this cadence runs through. Each channel step is delivered by the
+# primary agent's matching channel agent (EMAIL step -> EMAIL channel agent, ...).
+primaryAgentId: 405450a6-5482-48f8-9755-d7403b797b74 # North India Dev Agency Outreach
+
+flow:
+  file: automation-flow.json
+  summary: "Trigger -> Email 1 -> wait 2 days -> Email 2"
+  steps:
+    - type: trigger
+      id: trigger-1
+    - type: email
+      id: email-1
+      subject: Quick hello from FusionSync
+      content: dummy placeholder
+    - type: wait
+      id: wait-1
+      delayAmount: 2
+      delayUnit: day
+    - type: email
+      id: email-2
+      subject: Following up
+      content: dummy placeholder
+
+synced: true
+last_synced_at: 2026-06-05T10:13:19Z
+sync:
+  source: recallsync
+  live_updated_at: 2026-06-05T10:13:19Z
+  last_pulled_at: 2026-06-05T10:13:19Z

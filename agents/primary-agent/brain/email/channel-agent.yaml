@@ -1,0 +1,29 @@
+# Channel agent = RecallSync BaseAgent. Minimal link only. Behavior lives in the flow bundle.
+
+agent:
+  id: 8579cb0d-99cb-4ada-ba6e-22904e1fd8c7   # RecallSync BaseAgent.id
+  name: Brain Email
+  channel: EMAIL
+  provider: N8N
+  baseAgentType: FLOW
+  n8nWorkflowId: 7f43683b-5994-48dc-8310-b2d71fb071a4   # "Email Message #1" — send email
+  isActive: false   # created paused; activate only after testing + approval
+
+# FLOW agents: behavior lives in the exported bundle, not a single prompt file.
+flow:
+  file: channel-agent-flow.json
+  entryNodeId: obj-outreach
+  nodes: 3 objectives (Outreach & Engage -> Explore Overlap & Offer Next Step -> Confirm & Hand Off)
+  campaign: brainer   # outreach driven by the Brainer campaign
+
+synced: true                     # currentFlow draft pushed via set-channel-agent-flow-draft
+published_flow_state: draft      # draft | diverged | published
+last_synced_at: 2026-06-05T08:00:00Z
+last_pulled_at:
+live_updated_at: 2026-06-05T08:00:00Z
+
+owner: vishal
+created: 2026-06-05
+updated: 2026-06-05
+changelog:
+  - "2026-06-05: created Brain Email (FLOW, N8N) — id 8579cb0d-99cb-4ada-ba6e-22904e1fd8c7; pushed 3-objective outreach flow draft to currentFlow (not published, paused)"

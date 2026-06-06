@@ -1,0 +1,33 @@
+primaryAgent:
+  id: 405450a6-5482-48f8-9755-d7403b797b74
+  name: North India Dev Agency Outreach
+  internalName: ""
+  type: RECALL
+  description: Partnership outreach to North Indian software/design agencies serving US clients. Positions FusionSync AI as a technical implementation partner — relationship first, not direct selling.
+
+# Authored behavioral intent (what we manage from the brain)
+goal: Start founder-to-founder conversations with North Indian agencies that already serve US/UK/Canada clients and explore technical implementation partnerships.
+goalCompleteCriteria: Agency replies with curiosity, requests a demo/service menu, or agrees to a low-commitment pilot/POC next step.
+stopScenario: Hand off to Shubham when the agency agrees to a concrete next step (demo, call, or POC scope). Do not continue pitching after handoff.
+
+# Calendar linkage — reference only (integration ids / secrets live in RecallSync)
+calendar:
+  type: CAL
+  attached: false
+
+# Quick index of the channel agents (each is a <channel>/ folder beside this file)
+channelAgents:
+  - channel: EMAIL
+    folder: email
+    id: 406cbb17-34e9-4353-bc2d-a59df03bf109
+    name: North India Outreach Email
+    baseAgentType: FLOW
+    provider: N8N
+    isActive: false
+
+owner: vishal
+created: 2026-06-05
+updated: 2026-06-05
+changelog:
+  - "2026-06-05: created on prod business account (97f02e22…) — id 405450a6-5482-48f8-9755-d7403b797b74"
+  - "2026-06-05: added email channel agent (FLOW, N8N Brevo) — id 406cbb17-34e9-4353-bc2d-a59df03bf109; outreach flow draft pushed (paused)"

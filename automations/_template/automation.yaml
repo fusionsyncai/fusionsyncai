@@ -1,0 +1,27 @@
+# Copy this file to automations/<slug>/automation.yaml and fill it in.
+# The cadence itself lives beside it in automation-flow.json (React-Flow { nodes, edges }).
+# See sops/automation/configure-automation.md.
+
+automation:
+  id: # RecallSync Automation id (empty until create-automation returns it)
+  name: # display name
+  description: # one or two lines on the sequence / intent
+  status: DRAFT # DRAFT | ACTIVE | PAUSED | TERMINATED | COMPLETED | FAILED
+  businessId: # mirrored from RecallSync after create (read-only)
+
+# The worker this cadence runs through. Each channel step is delivered by the
+# primary agent's matching channel agent (EMAIL step -> EMAIL channel agent, ...).
+primaryAgentId: # must belong to this business
+
+flow:
+  file: automation-flow.json
+  # human-readable summary of the steps, e.g. "Email 1 -> wait 2d -> Email 2"
+  summary:
+
+# Sync metadata (mirrors RecallSync; managed by the configure flow).
+synced: false
+last_synced_at:
+sync:
+  source: recallsync
+  live_updated_at:
+  last_pulled_at:

@@ -1,0 +1,42 @@
+# AIOS mirror of a RecallSync campaign. Configured up to DRAFT/TESTING only.
+# Activation (ACTIVE) is a separate, explicitly approved step — see sops/campaign/configure-campaign.md.
+
+campaign:
+  id: d8949f6e-ec4e-4259-a089-e5fd81fdeffa
+  name: North India Dev Agency Outreach
+  description: >
+    Partnership outreach to North Indian software/design agencies serving US clients.
+    Positions FusionSync AI as a technical implementation partner — relationship first,
+    not direct selling. Worked by the North India Dev Agency Outreach primary agent (email).
+  status: TESTING # DRAFT | TESTING (configuration never sets ACTIVE)
+  businessId: 97f02e22-8758-4957-805f-1964da89419d
+
+# What the campaign binds to and how it runs (RecallSync "settings").
+# primaryAgentId is the main binding — the agent that actually works the leads.
+settings:
+  primaryAgentId: 405450a6-5482-48f8-9755-d7403b797b74 # North India Dev Agency Outreach
+  automationId: 9cca136d-db7c-4bb8-817b-6d3ac70ac59f # North India Dev Agency Outreach automation
+  timeZone: IST
+  withRetries: false
+  maxRetryAttempts: 3 # 1-10 (only meaningful when withRetries: true)
+  retryInterval: 2 # 1-30
+  retryIntervalType: hour # hour | day
+  concurrentCalls: 5 # 1-10 (voice-only gate; no effect on this email campaign)
+  assistantIds: []
+  weeklySchedule:
+    monday: { enabled: true, timeSlots: [{ startTime: "09:00", endTime: "17:00" }] }
+    tuesday: { enabled: true, timeSlots: [{ startTime: "09:00", endTime: "17:00" }] }
+    wednesday: { enabled: true, timeSlots: [{ startTime: "09:00", endTime: "17:00" }] }
+    thursday: { enabled: true, timeSlots: [{ startTime: "09:00", endTime: "17:00" }] }
+    friday: { enabled: true, timeSlots: [{ startTime: "09:00", endTime: "17:00" }] }
+    saturday: { enabled: false, timeSlots: [] }
+    sunday: { enabled: false, timeSlots: [] }
+
+# Sync metadata (mirrors RecallSync; managed by the configure/sync flow).
+synced: true
+last_synced_at: 2026-06-05T11:16:43Z
+sync:
+  source: recallsync
+  settings_updated: true # configure-campaign-settings ran
+  live_updated_at: 2026-06-05T11:16:43Z
+  last_pulled_at: 2026-06-05T11:16:43Z
