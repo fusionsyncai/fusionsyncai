@@ -7,8 +7,9 @@ automation:
   name: North India Dev Agency Outreach
   description: >
     Two-email outbound cadence for North Indian software/design agency partnership outreach.
-    Dummy copy for now: Email 1, wait 2 days, Email 2. Replies terminate the running
-    sequence server-side.
+    Both emails are STATIC HTML: Email 1 (intro, solo founder, technical growth partner positioning,
+    low-commitment pilot offer), wait 2 days, Email 2 (static follow-up). Replies terminate the
+    running sequence server-side.
   status: ACTIVE
   businessId: 97f02e22-8758-4957-805f-1964da89419d
 
@@ -18,26 +19,32 @@ primaryAgentId: 405450a6-5482-48f8-9755-d7403b797b74 # North India Dev Agency Ou
 
 flow:
   file: automation-flow.json
-  summary: "Trigger -> Email 1 -> wait 2 days -> Email 2"
+  summary: "Trigger -> wait 10s -> Email 1 -> wait 2 days -> Email 2"
   steps:
     - type: trigger
       id: trigger-1
+    - type: wait
+      id: wait-1780666990569
+      delayAmount: 10
+      delayUnit: second
     - type: email
       id: email-1
-      subject: Quick hello from FusionSync
-      content: dummy placeholder
+      subject: A partnership idea for your agency
+      messageType: static
+      content: Static HTML intro with {{firstName}}, {{company}}, {{personalizationHighlight}}
     - type: wait
       id: wait-1
       delayAmount: 2
       delayUnit: day
     - type: email
       id: email-2
-      subject: Following up
-      content: dummy placeholder
+      subject: Following up on a quick pilot idea
+      messageType: static
+      content: Static HTML founder-to-founder follow-up
 
 synced: true
-last_synced_at: 2026-06-05T10:13:19Z
+last_synced_at: 2026-06-07T08:48:12Z
 sync:
   source: recallsync
-  live_updated_at: 2026-06-05T10:13:19Z
-  last_pulled_at: 2026-06-05T10:13:19Z
+  live_updated_at: 2026-06-07T08:48:12Z
+  last_pulled_at: 2026-06-07T08:48:12Z

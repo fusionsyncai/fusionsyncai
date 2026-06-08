@@ -23,20 +23,23 @@ settings:
   retryIntervalType: hour # hour | day
   concurrentCalls: 5 # 1-10 (voice-only gate; no effect on this email campaign)
   assistantIds: []
+  # channels ["NONE"] is intentional — the automation sends emails; the campaign
+  # must NOT also send (avoids duplicate outbound). See aios-current-context design note.
+  channels: ["NONE"]
   weeklySchedule:
     monday: { enabled: true, timeSlots: [{ startTime: "09:00", endTime: "17:00" }] }
     tuesday: { enabled: true, timeSlots: [{ startTime: "09:00", endTime: "17:00" }] }
     wednesday: { enabled: true, timeSlots: [{ startTime: "09:00", endTime: "17:00" }] }
     thursday: { enabled: true, timeSlots: [{ startTime: "09:00", endTime: "17:00" }] }
-    friday: { enabled: true, timeSlots: [{ startTime: "09:00", endTime: "17:00" }] }
-    saturday: { enabled: false, timeSlots: [] }
-    sunday: { enabled: false, timeSlots: [] }
+    friday: { enabled: true, timeSlots: [{ startTime: "09:00", endTime: "22:00" }] }
+    saturday: { enabled: true, timeSlots: [{ startTime: "09:00", endTime: "23:00" }] }
+    sunday: { enabled: true, timeSlots: [{ startTime: "10:00", endTime: "21:00" }] }
 
 # Sync metadata (mirrors RecallSync; managed by the configure/sync flow).
 synced: true
-last_synced_at: 2026-06-05T11:16:43Z
+last_synced_at: 2026-06-07T06:15:11Z
 sync:
   source: recallsync
   settings_updated: true # configure-campaign-settings ran
-  live_updated_at: 2026-06-05T11:16:43Z
-  last_pulled_at: 2026-06-05T11:16:43Z
+  live_updated_at: 2026-06-07T06:15:11Z
+  last_pulled_at: 2026-06-07T06:15:11Z

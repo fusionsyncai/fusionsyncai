@@ -3,20 +3,32 @@
     {
       "id": "trigger-1",
       "type": "trigger",
-      "position": { "x": 100, "y": 200 },
+      "position": { "x": -757.275810520624, "y": 173.39038876182815 },
       "deletable": false,
       "selectable": false,
       "data": { "label": "Automation Trigger" }
     },
     {
+      "id": "wait-1780666990569",
+      "type": "wait",
+      "position": { "x": -305.625, "y": 186.875 },
+      "data": {
+        "label": "Wait",
+        "description": "Add a delay before next action",
+        "delayAmount": 10,
+        "delayUnit": "second",
+        "status": "initial"
+      }
+    },
+    {
       "id": "email-1",
       "type": "email",
-      "position": { "x": 450, "y": 200 },
+      "position": { "x": 99.6906043768953, "y": 181.49308853311896 },
       "data": {
-        "label": "Email 1 — Intro",
-        "description": "Dummy intro email (placeholder copy)",
-        "emailSubject": "Quick hello from FusionSync",
-        "messageContent": "Hi there,\n\nThis is a placeholder intro email for the North India dev-agency outreach sequence. Real copy will replace this before the automation goes live.\n\n— Shubham, FusionSync AI",
+        "label": "Email 1 - Intro",
+        "description": "Static intro email (HTML) with {{firstName}}, {{company}}, {{personalizationHighlight}}",
+        "emailSubject": "A partnership idea for your agency",
+        "messageContent": "<div style=\"max-width:480px;margin:0 auto;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.6;color:#1a1a1a;\"><p>Hey {{firstName}},</p><p>Came across {{company}} and was going through some of your work, {{personalizationHighlight}}.</p><p>Made me think there could actually be some overlap.</p><p>I run FusionSync AI, a small technical systems company. We mostly build the implementation-heavy side of things:</p><ul><li>CRM systems and automation</li><li>AI workflows and voice systems</li><li>APIs and internal tools</li><li>Operational and business workflows</li></ul><p>A lot of agencies are great at product engineering and design but increasingly get pulled into requests around AI, automation, CRM workflows, smarter lead handling, and internal tooling. Building that capability in-house rarely makes sense.</p><p>So figured I'd introduce myself. If there's ever overlap where your team wants an extra technical layer for implementation-heavy work, happy to collaborate quietly behind the scenes.</p><p>Happy to share a short service menu and, if useful, put together a quick custom demo around something your team or clients are exploring.</p><p>Shubham<br/>Founder, <a href=\"https://www.google.com/search?q=fusionsyncai\">FusionSync AI</a></p></div>",
         "messageType": "static",
         "emailType": "static",
         "status": "initial"
@@ -25,7 +37,7 @@
     {
       "id": "wait-1",
       "type": "wait",
-      "position": { "x": 800, "y": 200 },
+      "position": { "x": 786.7807775236564, "y": 259.4865011435461 },
       "data": {
         "label": "Wait 2 days",
         "description": "Pause before the follow-up email",
@@ -37,12 +49,12 @@
     {
       "id": "email-2",
       "type": "email",
-      "position": { "x": 1150, "y": 200 },
+      "position": { "x": 1357.541792878594, "y": 197.3561555047313 },
       "data": {
-        "label": "Email 2 — Follow-up",
-        "description": "Dummy follow-up email (placeholder copy)",
-        "emailSubject": "Following up",
-        "messageContent": "Hi there,\n\nThis is a placeholder follow-up email, sent 2 days after the first if there's no reply. Real copy will replace this before launch.\n\n— Shubham, FusionSync AI",
+        "label": "Email 2 - Follow-up",
+        "description": "Static founder-to-founder follow-up (HTML, sent 2 days after Email 1 if no reply)",
+        "emailSubject": "Following up on a quick pilot idea",
+        "messageContent": "<div style=\"max-width:480px;margin:0 auto;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.6;color:#1a1a1a;\"><p>Hey,</p><p>Floating this back up, founder inboxes are brutal, I get it.</p><p>Quick version: I'm a solo founder running FusionSync AI, and I work as a technical growth partner for agencies like yours, handling marketing, AI services implementation, and client management so you can take on more without staffing up.</p><p>If it's worth exploring, I'd start with a small, low-commitment pilot: one real project for you or a client, just to prove the work. No pressure either way.</p><p>Shubham<br/><a href=\"https://www.google.com/search?q=fusionsyncai\">FusionSync AI</a></p></div>",
         "messageType": "static",
         "emailType": "static",
         "status": "initial"
@@ -50,7 +62,22 @@
     }
   ],
   "edges": [
-    { "id": "edge-trigger-email1", "source": "trigger-1", "target": "email-1", "type": "deletable" },
+    {
+      "id": "edge-trigger-1-wait-1780666990569-1780666994368",
+      "source": "trigger-1",
+      "target": "wait-1780666990569",
+      "type": "deletable",
+      "animated": true,
+      "style": { "stroke": "#6366f1", "strokeWidth": 2 }
+    },
+    {
+      "id": "edge-wait-1780666990569-email-1-1780667000687",
+      "source": "wait-1780666990569",
+      "target": "email-1",
+      "type": "deletable",
+      "animated": true,
+      "style": { "stroke": "#6366f1", "strokeWidth": 2 }
+    },
     { "id": "edge-email1-wait1", "source": "email-1", "target": "wait-1", "type": "deletable" },
     { "id": "edge-wait1-email2", "source": "wait-1", "target": "email-2", "type": "deletable" }
   ]

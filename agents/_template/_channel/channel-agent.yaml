@@ -8,6 +8,7 @@ agent:
   channel: EMAIL           # EMAIL | SMS | WHATSAPP | FACEBOOK | INSTAGRAM | LIVE_CHAT | VOICE_CALL | WP_VOICE_CALL
   provider: GHL            # GHL | N8N | WHATSAPP | INSTAGRAM | TWILIO | VAPI | ...
   baseAgentType: STANDARD  # STANDARD (single prompt) | FLOW (multi-prompt)
+  agentMode: AUTO          # AUTO (replies auto-send) | DRAFT (human-in-the-loop: hold reply as pending → approve/reject in classic inbox)
 
 prompt:
   file: channel-agent-prompt.md

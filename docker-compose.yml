@@ -1,0 +1,84 @@
+# Local infrastructure for the AIOS lead-factory (staging DB, etc.).
+# This is the lead pipeline's system of record — separate from RecallSync.
+#
+# Secrets: values are read from the shell / a gitignored env file. Sensible
+# local-dev defaults are inlined via ${VAR:-default} so `docker compose up` works
+# with zero config. Override in production by exporting the vars (see .env.example).
+#
+#   docker compose up -d        # start
+#   docker compose ps           # status
+#   docker compose logs -f db   # tail logs
+#   docker compose down         # stop (keeps the named volume / data)
+
+services:
+  db:
+    image: postgres:16.6-alpine
+    container_name: aios-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-aios}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-aios_local_dev}
+      POSTGRES_DB: ${POSTGRES_DB:-aios_leads}
+      # Tune as needed; alpine image keeps the footprint small.
+      POSTGRES_INITDB_ARGS: "--data-checksums"
+    ports:
+      # Host 5433 by default to avoid clashing with a local/native Postgres on 5432.
+      - "${POSTGRES_PORT:-5433}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-aios} -d ${POSTGRES_DB:-aios_leads}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  email-verifier:
+    image: envisiontechai/fusionsyncai-email-verifier:latest
+    container_name: aios-email-verifier
+    restart: unless-stopped
+    ports:
+      - "${EMAIL_VERIFIER_PORT:-5050}:5050"
+
+  # JS-rendering crawler — used for scraping JS-gated pages (e.g. Facebook/social
+  # profiles) where a plain HTTP fetch only sees a login/pre-render shell. Exposes
+  # a REST API on 11235. Optionally secure with CRAWL4AI_API_TOKEN.
+  crawl4ai:
+    image: unclecode/crawl4ai:0.8.8
+    container_name: aios-crawl4ai
+    restart: unless-stopped
+    ports:
+      - "${CRAWL4AI_PORT:-11235}:11235"
+    environment:
+      # When set, requests must send `Authorization: Bearer <token>`.
+      CRAWL4AI_API_TOKEN: ${CRAWL4AI_API_TOKEN:-}
+    # Chromium needs more shared memory than Docker's 64MB default or it crashes.
+    shm_size: "1g"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11235/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Google Maps harvester — Playwright service for GM Scraper cron jobs.
+  gmaps-harvester:
+    build:
+      context: ./services/gmaps-harvester
+    container_name: aios-gmaps-harvester
+    restart: unless-stopped
+    ports:
+      - "${GMAPS_HARVESTER_PORT:-5071}:5071"
+    environment:
+      GMAPS_HARVESTER_PORT: 5071
+    shm_size: "1g"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5071/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+volumes:
+  pgdata:
+    name: aios-pgdata

@@ -47,3 +47,14 @@ telegram-bridge/node_modules
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# backups
+/backup
+
+# prisma — generated client (regenerated via `prisma generate` / postinstall)
+/generated
+
+telegram-bridge/node_modules
+services/node_modules
+services/cursor-enrichment/node_modules
+services/gmaps-harvester/node_modules

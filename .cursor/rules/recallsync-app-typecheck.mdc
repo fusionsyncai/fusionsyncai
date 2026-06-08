@@ -1,0 +1,18 @@
+---
+description: How to type-check recallsync-app
+alwaysApply: true
+---
+
+# recallsync-app — type checking
+
+To type-check the **recallsync-app** repo, always run:
+
+```bash
+npm run ts:check
+```
+
+(from the `recallsync-app` root). This maps to `tsc --noEmit`.
+
+## Don't
+
+- Don't invoke `npx tsc --noEmit` / `tsc` directly — use the `ts:check` script so config stays consistent.

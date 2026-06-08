@@ -29,6 +29,7 @@ A primary agent exists and needs a worker for a specific channel (EMAIL, SMS, WH
 | `provider` | yes | — | Delivery provider — must be **allowed for the channel** AND **connected** |
 | `description` | no | — | Short description |
 | `baseAgentType` | **ask** | `STANDARD` | Builder type — **must be confirmed with the owner**: `STANDARD` (single prompt) or `FLOW` (multi-prompt). `RECALL` is special-purpose. |
+| `agentMode` | **ask** | `AUTO` | Human-in-the-loop mode — **must be confirmed with the owner**: `AUTO` (replies send automatically) or `DRAFT` (replies held for human approve/reject). See "Agent mode" below. |
 | `type` | no | `INTEGRATED` | Agent type (`INTEGRATED` / `N8N` / `VAPI` / ...) |
 | `isActive` | no | `false` | Created **paused** by default; activated explicitly later |
 | `prompt` | no | seeded | STANDARD: defaults to `"You are a helpful agent."` if empty. FLOW: top-level prompt stays empty (prompt lives in the flow). Authored in the repo and synced later. |
@@ -41,6 +42,25 @@ A primary agent exists and needs a worker for a specific channel (EMAIL, SMS, WH
 - **`RECALL`** — special-purpose; only when explicitly required.
 
 Ask: *"Standard (single prompt) or Flow (multi-prompt)?"* and use the answer for `baseAgentType`.
+
+## Agent mode — human-in-the-loop (always ask)
+`agentMode` is a field on the channel agent (`BaseAgent`) that controls **whether the agent sends
+its replies on its own or waits for a human**. It is **not** a silent default — always confirm it
+with the owner before creating:
+
+- **`AUTO` (default)** — fully autonomous. The agent generates a reply and **sends it immediately**,
+  no human step.
+- **`DRAFT` (human-in-the-loop)** — the agent generates a reply but **does not send it**. Instead the
+  reply is held as **pending** and surfaces in the **classic RecallSync conversation inbox** (only
+  the classic inbox, not Insta-OS). There a human takes one of two actions:
+  - **Approve** → the pending reply is sent as-is.
+  - **Reject** → the pending reply is discarded (nothing is sent).
+
+Use `DRAFT` whenever the owner wants oversight on outbound messages (e.g. sensitive outreach, early
+testing, high-value conversations); use `AUTO` for hands-off, fully automated channels.
+
+Ask: *"Auto-send replies, or human-in-the-loop (draft → approve/reject in the inbox)?"* and use the
+answer for `agentMode`.
 
 ### Creation defaults (seeded server-side)
 `create-channel-agent` seeds a working default so the agent is never created empty:
@@ -82,21 +102,26 @@ a required "N8N Workflow" dropdown whenever the provider is N8N).
 1. Confirm the target **primary agent** (run `get-primary-agents` if you need the id).
 2. Confirm the **channel** and **provider** with the owner.
 3. **Confirm the builder type**: Standard (single prompt) or Flow (multi-prompt) → `baseAgentType`.
-4. Run `list-integrations` and verify the provider is connected. If not → stop, ask to connect.
-5. If provider is **N8N**, run `list-n8n-workflows` and pick the `n8nWorkflowId`.
-6. Run `create-channel-agent` with at least `primaryAgentId`, `name`, `channel`, `provider`,
-   `baseAgentType` (+ `n8nWorkflowId` for N8N). Created paused (`isActive: false`) with empty prompt.
-7. Mirror it in the AIOS repo: add the channel folder
+4. **Confirm the agent mode**: Auto-send or human-in-the-loop (draft → approve/reject) → `agentMode`.
+5. Run `list-integrations` and verify the provider is connected. If not → stop, ask to connect.
+6. If provider is **N8N**, run `list-n8n-workflows` and pick the `n8nWorkflowId`.
+7. Run `create-channel-agent` with at least `primaryAgentId`, `name`, `channel`, `provider`,
+   `baseAgentType`, `agentMode` (+ `n8nWorkflowId` for N8N). Created paused (`isActive: false`) with empty prompt.
+   To change mode later: `update-channel-agent` with `{ id, agentMode: "AUTO" | "DRAFT" }`.
+8. Mirror it in the AIOS repo: add the channel folder
    (`agents/primary-agent/<primary-agent-name>/<channel>/`) with `channel-agent.yaml` +
    `channel-agent-prompt.md`, and write the returned `baseAgent.id` back. Commit.
-8. Author behavior:
+9. Author behavior:
    - **STANDARD** → `channel-agent-prompt.md`, sync via `prompting-standard.md`.
    - **FLOW** → `channel-agent-flow.json` (exported bundle), sync via `prompting-flow.md`.
-9. Test the agent with `sops/channel-agent/testing.md`.
-10. After owner approval, activate with `update-channel-agent` using `{ id, isActive: true }`.
+10. Test the agent with `sops/channel-agent/testing.md`.
+11. After owner approval, activate with `update-channel-agent` using `{ id, isActive: true }`.
 
 ## Human-in-the-loop
-Owner confirms channel + provider + builder type (steps 2–3) and prompt before activation.
+Owner confirms channel + provider + builder type + agent mode (steps 2–4) and prompt before activation.
+Note: agent mode (`AUTO` vs `DRAFT`) is a per-agent runtime control — `DRAFT` keeps a human in the
+loop on **every outbound reply** (approve/reject in the classic inbox), separate from the one-time
+provisioning approval.
 
 ## Output
 - A live `BaseAgent` on RecallSync, attached to the primary. It is created paused and only
@@ -105,6 +130,7 @@ Owner confirms channel + provider + builder type (steps 2–3) and prompt before
 
 ## Done criteria
 - [ ] Builder type (Standard vs Flow) confirmed with owner
+- [ ] Agent mode (Auto vs Draft / human-in-the-loop) confirmed with owner
 - [ ] Provider connectivity verified via `list-integrations`
 - [ ] `create-channel-agent` succeeded; id captured
 - [ ] AIOS channel-agent folder created at `agents/primary-agent/<name>/<channel>/` and id committed back

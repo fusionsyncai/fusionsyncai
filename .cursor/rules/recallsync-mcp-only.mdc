@@ -1,0 +1,25 @@
+---
+description: RecallSync operations must go through MCP, never direct REST
+alwaysApply: true
+---
+
+# RecallSync — MCP only
+
+All reads and writes against RecallSync (leads, campaigns, agents, automations, etc.) **must use MCP tools** (`recallsync-primary` / `project-0-fusionsyncai-recallsync-primary`).
+
+## Do
+
+- Call MCP tools: `get-campaign-leads`, `remove-lead-from-campaign`, `create-lead`, etc.
+- If a tool is missing, add it in `recallsync-mcp` + the matching REST route in `recallsync-app`.
+  The MCP server runs in **dev mode (hot reload)** — see `recallsync-mcp-run` — so it picks up
+  source edits automatically. **No manual MCP restart or Cursor re-enable is needed.**
+
+## Don't
+
+- **Never** call RecallSync REST directly (`curl`, `fetch`, `axios`) to `*/api/rest/*` from this repo or agent sessions.
+- **Never** bypass MCP with hardcoded `Authorization: Bearer` tokens or `BASE_URL` probes.
+- **Never** use Prisma against RecallSync DB from AIOS for operational tasks.
+
+## If MCP is down or a tool fails
+
+Stop and ask the user to fix MCP (confirm the dev server is running, check `api_key` in `.cursor/mcp.json`). Do **not** fall back to REST.

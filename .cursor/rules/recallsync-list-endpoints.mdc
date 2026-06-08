@@ -1,0 +1,41 @@
+---
+description: Pagination, field selection, and filtering for RecallSync list endpoints/tools
+alwaysApply: true
+---
+
+# RecallSync — list endpoints must support pagination, select, filters
+
+When creating or editing any **list / read-many** RecallSync operation (leads, messages, meetings,
+follow-ups, campaign leads, conversations, opportunities, etc.) across tRPC, REST, or MCP, always
+follow `sops/list-pagination-and-field-selection.md`. Do **not** ship a list endpoint that returns
+unbounded arrays or full rows by default.
+
+## Always include
+
+- **Pagination**: `page` (default 1) + `pageSize` (default 10) via `filterPaginationSchema` (tRPC),
+  `getPaginationParams` (REST), `ListQuerySchema` (MCP). Return `{ <items>, total, totalPages, hasNextPage }`.
+- **Field selection**: `select` (Prisma `ScalarFieldEnum[]` in tRPC; CSV string in REST/MCP). Define a
+  **lean default** field set when `select` is omitted — never dump the whole row unless asked.
+- **Filtering**:
+  - Date filters via `applyDateFilter(where, input, '<dateField>')` (e.g. `createdAt`, `followUpAt`, `startTime`).
+  - Domain filters (e.g. `status`, `sender`, `channel`, `type`) as **server-side** query params —
+    never fetch-all-then-filter client-side.
+
+## Keep it simple
+
+- If the model has **no `createdAt`** (or no natural date field), **skip date filters** — ship only
+  pagination + `select`. **Never** add or change the Prisma schema just to enable a date filter.
+- Don't over-engineer. Wire only what the entity already supports.
+- **Ask first** before assuming a domain filter, a new field, a schema change, or any extra behavior
+  beyond plain pagination + `select`.
+
+## Agent behavior
+
+- When the user asks for "10 / 50 / 100", set `pageSize`. When they ask for specific fields, set `select`.
+- When they ask for a status/sender/channel/type subset, use the server-side filter param, not client filtering.
+
+## Reference
+
+- SOP: `sops/list-pagination-and-field-selection.md`
+- Impl: `get-conversation-messages`, `get-leads`, `get-meetings`, `get-all-follow-ups`
+- Helpers: `recallsync-mcp/src/schema/list-query.ts`, `recallsync-mcp/src/utils/list-query.util.ts`

@@ -1,0 +1,35 @@
+---
+description: Manage running the recallsync-app Next.js server (production start)
+alwaysApply: true
+---
+
+# recallsync-app — run management
+
+`recallsync-app` is a **Next.js** app that runs on **port 3000** (NOT 3008 — that is the dev MCP).
+The agent is responsible for keeping it running in **production** mode (`npm run start`), never `npm run dev`.
+
+## Start it (when not running)
+
+From the `recallsync-app` root:
+
+```bash
+npm run build && npm run start
+```
+
+`npm run start` (`next start`) serves the **build output**, so a `build` must exist/be current first.
+
+## After ANY change to recallsync-app
+
+If you add/modify an API route, tRPC procedure, or any server code in recallsync-app, the running
+production server will NOT reflect it until rebuilt. So:
+
+1. **Stop** the existing `next start` process (kill whatever is listening on port **3000**)
+2. `npm run build`
+3. `npm run start`
+
+## Rules
+
+- Always **production** start (`npm run start`), never `next dev`.
+- Port is **3000**. Do not confuse with the dev MCP on **3008**.
+- If port 3000 is already in use, **kill that process first**, then build + start.
+- A code change is not live until stop → build → start complete.

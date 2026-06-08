@@ -33,3 +33,22 @@ the MCP to a `privateProcedure` — it has no session.
 - One business = one repo = one RecallSync sub-account (fixed by the api key).
 - MCP tools are thin: validate input → fetch REST → return text. Business logic stays in the app.
 - To add a new MCP operation, follow `add-mcp-operation.md`.
+
+## Coverage
+
+- `coverage.md` is the **living map of what AIOS can control via MCP** (entity × action × layer)
+  and the prioritized backlog. Check it before adding new RecallSync features; update it when an
+  operation lands.
+
+## Dev MCP session
+
+**You never reload MCP in Cursor.** The **recallsync-mcp dev server** runs in dev mode with hot
+reload (`npm run dev`, nodemon), so it picks up source edits — including new and changed tools —
+automatically. New tools are live in the same session with no reload, no Settings toggle, and no
+*Developer: Reload Window*. See rule `recallsync-mcp-run`.
+
+`recallsync-mcp/server.ts` also **recovers stale sessions** transparently: if a request arrives with
+a session id the in-memory map no longer has (after a nodemon reload), the server re-binds that id
+instead of returning `400 No valid session ID`. Cursor keeps working across reloads on its own.
+
+**Only exception:** `.env` changes are not hot-reloaded and need a manual server restart.

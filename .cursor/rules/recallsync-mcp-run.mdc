@@ -1,0 +1,41 @@
+---
+description: recallsync-mcp dev server/reload guidance
+alwaysApply: true
+---
+
+# recallsync-mcp — run management
+
+`recallsync-mcp` runs on **port 3008** (exposed via ngrok). Do not run it on another port.
+
+Production run:
+
+```bash
+npm run build
+npm run start
+```
+
+Dev run:
+
+```bash
+npm run dev
+```
+
+`npm run dev` watches `server.ts` and `src/**` (`--watch src --ext ts,json`), so source edits under
+tools, schemas, constants, or server registration restart the MCP process automatically.
+
+## Key rule
+
+- MCP must listen on **port 3008** only.
+- For production-style operation, use `npm run build` then `npm run start`.
+- A separate `npm run build` is only needed for a **production** (`npm run start`) deploy, not for
+  the running dev server.
+- Exception: only `.env` changes need a manual restart (env is not hot-reloaded).
+
+## Don't
+
+- Don't claim a new MCP tool is live until its descriptor exists in the MCP tools folder or a tool call succeeds.
+- Don't confuse port **3008** (dev MCP) with port **3000** (recallsync-app — see `recallsync-app-run`).
+
+## If MCP genuinely misbehaves
+
+Only then ask the user to confirm the dev server is up and `api_key` in `.cursor/mcp.json` is correct.

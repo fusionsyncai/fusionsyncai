@@ -1,0 +1,88 @@
+---
+description: AIOS CRM dashboard (Next.js app) — run port and data-access rules
+alwaysApply: true
+---
+
+# AIOS CRM app — run + data access
+
+The AIOS CRM dashboard is the **Next.js app at the repo root** (`app/`, `lib/`, `prisma/`).
+It is the lead-factory UI (Contacts, Campaigns, Dashboard) backed by **local Postgres**
+(see `docker-compose.yml`, `prisma/schema.prisma`). This is **separate from RecallSync** — do
+not confuse it with `recallsync-app` (port 3000) or the dev MCP (port 3008).
+
+## Port
+
+- The AIOS CRM app runs on **port 3010** (both dev and prod). The npm scripts pin this:
+  - `npm run dev`   → `next dev --port 3010`
+  - `npm run start` → `next start --port 3010`
+- Base URL: **`http://localhost:3010`**.
+
+## Always fetch CRM data via the API (route handlers)
+
+When reading or listing CRM data (contacts, campaigns, etc.), **always go through the Next.js
+route handlers over HTTP** — never query Prisma/Postgres directly and never `docker exec psql`
+for app data.
+
+```bash
+curl http://localhost:3010/api/contacts
+curl http://localhost:3010/api/campaigns
+```
+
+- Route handlers live in `app/api/*/route.ts` and are the canonical data path (the dashboard
+  pages use the same endpoints, and external systems like n8n/scrapers will too).
+- If an endpoint you need does not exist yet, **add a route handler** rather than bypassing it.
+- One-off **mutations** may use server actions (e.g. `app/(dashboard)/campaigns/actions.ts`);
+  reads go through the REST route handlers.
+
+## Running the app (agent may auto-start / auto-restart)
+
+The agent **may start and restart** the CRM dev server itself — do not ask the user to do it.
+
+- Start it with `npm run dev` (binds port **3010**). Confirm Postgres is up first
+  (`docker compose up -d`).
+- If `curl http://localhost:3010` fails, just (re)start it. Do **not** fall back to direct DB
+  access to "work around" the app being down.
+- Only one process can bind 3010 — if it's already in use, kill that process first, then start.
+
+## After ANY Prisma change — REQUIRED restart cycle
+
+Next.js loads the generated Prisma client into the running dev process; editing
+`prisma/schema.prisma` does **not** hot-reload the client, so a stale server will 500 (e.g. it
+keeps selecting a column you just dropped). After **every** schema change you MUST:
+
+1. **Kill** the running CRM server (whatever is listening on port **3010**).
+2. **Push + regenerate**: `prisma db push` (add `--accept-data-loss` when intentionally dropping
+   columns) then `prisma generate` (or `npm run db:push && npm run db:generate`). Use the local
+   `DATABASE_URL` (Postgres on host port **5432**).
+3. **Restart** the server (`npm run dev`).
+
+Skipping the kill+restart leaves the old client loaded and the API will error until the process
+is replaced. This is required, not optional.
+
+## Email verifier / finder (Flask, port 5050)
+
+The CRM's email verification is backed by the **`recall-email-finder` Flask app** at
+`/Users/vishalchauhan/Desktop/developer/recall/recall-email-finder`, running on **port 5050**.
+This is our local **email verifier and finder** (finder endpoints exist but we focus on verify
+for now). It is **meant to be always running** — treat it like infra, keep it up.
+
+- Start it (from that repo root): `venv/bin/python app.py` (serves on `http://localhost:5050`).
+- Health check: `curl http://localhost:5050/health` → `{"status":"healthy"}`.
+- Endpoints: `POST /verify-email` (`{email}` → `{email, status, reason, message}`, status is
+  `valid|invalid|risky`), plus `POST /find-email` (`{name, website}`) for later.
+- Verification is **synchronous + SMTP-based**, so a single verify can take up to ~40s.
+
+### How the CRM uses it
+
+- The CRM route handler **`POST /api/contacts/[id]/verify-email`** calls the Flask
+  `/verify-email`, maps the result to the `EmailStatus` enum
+  (`valid→VALID`, `invalid→INVALID`, `risky→RISKY`, `catch_all→CATCH_ALL`, else `UNKNOWN`),
+  and persists it on the contact.
+- The verifier base URL is configurable via **`EMAIL_VERIFIER_URL`** (defaults to
+  `http://localhost:5050`). See `.env.example`.
+
+### When the verifier is down
+
+If `curl http://localhost:5050/health` fails, ask the user to start the Flask app
+(`venv/bin/python app.py` in `recall-email-finder`). The CRM endpoint returns `503` when the
+verifier is unreachable — do **not** fake/guess verification results to work around it.

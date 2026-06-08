@@ -1,0 +1,517 @@
+// Lead-factory staging DB (local Postgres, see docker-compose.yml).
+// This is the lead pipeline's system of record — separate from RecallSync.
+//
+// Generate client:   npm run db:generate
+// Create migration:  npm run db:migrate -- --name <name>
+// Open studio:       npm run db:studio
+//
+// Connection comes from DATABASE_URL (prisma.config.ts). Runtime uses the
+// node-postgres driver adapter (@prisma/adapter-pg) — see lib/prisma.ts.
+
+generator client {
+  provider            = "prisma-client"
+  output              = "../generated/prisma"
+  importFileExtension = ""
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ---------------------------------------------------------------------------
+// Lead-factory contacts
+//
+// A Contact is an (optionally) enriched lead. Company data is embedded (one
+// agency may appear across several contacts). Tags are first-class and shared
+// across contacts (many-to-many) so we can filter "all leads for campaign X".
+//
+// Concept separation (do not collapse these):
+//   - tags          -> targeting / segmentation (which audience / campaign)
+//   - pipelines     -> pipeline lifecycle (which stage of which pipeline; via PipelineContact)
+//   - quality       -> enrichment grade (how good a fit it is)
+//   - emailStatus   -> verification result (the hard gate before sync)
+//   - recallsync*   -> sync state (already pushed to RecallSync? which lead id?)
+// ---------------------------------------------------------------------------
+
+model Contact {
+  id String @id @default(uuid())
+
+  // Identity
+  name      String
+  firstName String? @map("first_name")
+  lastName  String? @map("last_name")
+  title     String? // job title / role — useful for personalization
+
+  // Contact channels
+  email       String?     @unique
+  emailStatus EmailStatus @default(UNKNOWN) @map("email_status")
+  phone       String?
+  linkedinUrl String?     @unique @map("linkedin_url")
+
+  // Embedded company (denormalized by choice)
+  companyName          String? @map("company_name")
+  companyWebsite       String? @map("company_website")
+  companyDomain        String? @map("company_domain")
+  companyEmployeeCount Int?    @map("company_employee_count")
+  companyIndustry      String? @map("company_industry")
+  companyLocation      String? @map("company_location")
+  companyLinkedinUrl   String? @map("company_linkedin_url")
+
+  // Enrichment
+  quality          LeadQuality      @default(UNQUALIFIED) // enrichment fit grade
+  score            Int? // optional numeric fit score (0-100) backing `quality`
+  enrichmentStatus EnrichmentStatus @default(PENDING) @map("enrichment_status")
+  enrichedAt       DateTime?        @map("enriched_at")
+
+  // Provenance
+  source    String? // e.g. apollo | apify | indeed | manual
+  sourceUrl String? @map("source_url")
+
+  // Flexible per-provider extras (don't filter on these — promote to columns first)
+  customData Json? @map("custom_data")
+
+  // RecallSync sync state (the only RecallSync fields we keep)
+  recallsyncLeadId String?   @unique @map("recallsync_lead_id")
+  syncedAt         DateTime? @map("synced_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  tags      ContactTag[]
+  campaigns CampaignContact[]
+  pipelines PipelineContact[]
+  gmScraperQueries GmScraperQueryContact[]
+
+  @@index([quality])
+  @@index([enrichmentStatus])
+  @@index([emailStatus])
+  @@index([companyDomain])
+  @@map("contacts")
+}
+
+model Campaign {
+  id String @id @default(uuid())
+
+  name        String
+  description String?
+
+  // Optional mapping to the live RecallSync campaign this local CRM segment feeds.
+  recallsyncCampaignId String? @unique @map("recallsync_campaign_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  contacts CampaignContact[]
+
+  // Optional 1:1 pipeline, auto-created with the campaign and removed with it.
+  pipeline         Pipeline?
+  gmScraperQueries GmScraperQuery[]
+
+  @@map("campaigns")
+}
+
+// Explicit join — a contact can belong to many local campaigns, and a campaign
+// can contain many contacts before we sync qualified leads to RecallSync.
+model CampaignContact {
+  campaignId String @map("campaign_id")
+  contactId  String @map("contact_id")
+
+  addedAt DateTime @default(now()) @map("added_at")
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  contact  Contact  @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  @@id([campaignId, contactId])
+  @@index([contactId])
+  @@map("campaign_contacts")
+}
+
+// ---------------------------------------------------------------------------
+// Pipelines (mirrors RecallSync's Pipeline / Stage / Opportunity shape).
+//
+// A Pipeline is campaign-agnostic but may be linked 1:1 to a local campaign.
+// Stages are ordered columns. PipelineContact is the Opportunity-like join that
+// places a contact into exactly one stage of a pipeline. Contact lifecycle now
+// lives here (we removed the old `PipelineStatus` enum from Contact).
+// ---------------------------------------------------------------------------
+
+model Pipeline {
+  id   String @id @default(uuid())
+  name String
+
+  // Optional 1:1 link to a local campaign. The relation is optional so a
+  // pipeline CAN exist standalone (campaign-agnostic), but an auto-created
+  // campaign pipeline is owned by its campaign and removed with it (Cascade).
+  campaignId String?   @unique @map("campaign_id")
+  campaign   Campaign? @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  stages   Stage[]
+  contacts PipelineContact[]
+
+  @@map("pipelines")
+}
+
+model Stage {
+  id    String @id @default(uuid())
+  name  String
+  order Int    @default(0)
+
+  pipelineId String   @map("pipeline_id")
+  pipeline   Pipeline @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
+
+  // Optional action (HTTP call) run for contacts in this stage by the worker.
+  // Reusable across stages; detaching an action just nulls this out.
+  actionId String? @map("action_id")
+  action   Action? @relation(fields: [actionId], references: [id], onDelete: SetNull)
+
+  // When true, the pipeline /process endpoint will run this stage's action for
+  // its PENDING contacts. Off by default so adding an action is never "armed"
+  // until you explicitly enable processing for the stage.
+  autoProcessing Boolean @default(false) @map("auto_processing")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  contacts         PipelineContact[]
+  gmScraperQueries GmScraperQuery[]
+
+  @@index([pipelineId])
+  @@index([actionId])
+  @@map("stages")
+}
+
+// A reusable HTTP call (webhook/endpoint) that a stage can run for its contacts.
+// Intentionally minimal: method + url (+ optional headers/body). The processing
+// worker reads these; nothing here executes the request.
+model Action {
+  id   String @id @default(uuid())
+  name String
+
+  method  HttpMethod @default(POST)
+  url     String
+  headers Json? // optional key/value map (values stored encrypted)
+  body    Json? // optional request payload
+
+  // How the processor decides success. Null => any HTTP 2xx is success.
+  // Shapes (see lib/actions.ts):
+  //   { "type": "STATUS_CODE", "statusCode": 200 }
+  //   { "type": "JSON_MATCH", "key": "success", "value": "true" }
+  successCriteria Json? @map("success_criteria")
+
+  // Throughput controls used by the processor (per stage using this action):
+  //   batchSize   -> max contacts claimed per processing run (caps total work)
+  //   concurrency -> max requests in flight at once (caps load on the target)
+  batchSize   Int @default(50) @map("batch_size")
+  concurrency Int @default(5)
+
+  // When false, a successful action does NOT advance the contact to the next
+  // stage; instead the processor parks it as WAITING. Used for async actions
+  // (e.g. enrichment) that return 202 immediately and call back later — the
+  // callback is what decides whether/where to advance. Default true keeps the
+  // classic "success => next stage" behaviour for synchronous actions.
+  advanceOnSuccess Boolean @default(true) @map("advance_on_success")
+
+  // Tag IDs applied to the contact when the action settles. These label the
+  // outcome (segmentation) without changing pipeline position — a failed
+  // contact stays parked as FAILED, just tagged (e.g. "invalid-email"), so it
+  // can later be acted on in bulk (tag -> move to stage). Loose ID references
+  // (no FK array in Postgres); unknown IDs are ignored at apply time.
+  onSuccessTags String[] @default([]) @map("on_success_tags")
+  onFailureTags String[] @default([]) @map("on_failure_tags")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  stages Stage[]
+
+  @@map("actions")
+}
+
+// Opportunity-like join: a contact sits in exactly one stage of a given
+// pipeline (enforced by the @@unique on contact+pipeline).
+model PipelineContact {
+  id String @id @default(uuid())
+
+  contactId String  @map("contact_id")
+  contact   Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  pipelineId String   @map("pipeline_id")
+  pipeline   Pipeline @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
+
+  stageId String @map("stage_id")
+  stage   Stage  @relation(fields: [stageId], references: [id], onDelete: Cascade)
+
+  order          Int      @default(0)
+  addedToStageAt DateTime @default(now()) @map("added_to_stage_at")
+
+  // Processing state WITHIN the current stage. No PROCESSED state by design:
+  // on success the contact moves to the next stage and resets to PENDING.
+  //   PENDING    -> claimable by the processor
+  //   PROCESSING -> claimed/in-flight (lock, skipped by the where)
+  //   FAILED     -> action failed; skipped until manually retried
+  //   WAITING    -> async action accepted; parked until its callback advances it
+  stageStatus StageStatus @default(PENDING) @map("stage_status")
+
+  // Set when a contact is claimed (PENDING -> PROCESSING). Used to reclaim rows
+  // stuck in PROCESSING (crash/timeout) back to PENDING after a staleness window.
+  processingStartedAt DateTime? @map("processing_started_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([contactId, pipelineId])
+  @@index([pipelineId])
+  @@index([stageId])
+  @@index([contactId])
+  @@index([stageStatus])
+  @@map("pipeline_contacts")
+}
+
+// TTL-based single-flight lock for the cron processor. A row-lock (not a
+// Postgres advisory lock) because Prisma's connection pool can run lock/unlock
+// on different connections, which leaks session advisory locks. `lockedUntil`
+// auto-expires the lock if a run crashes without releasing it.
+model ProcessingLock {
+  key         String   @id
+  lockedUntil DateTime @map("locked_until")
+
+  @@map("processing_locks")
+}
+
+// A user-managed scheduled job. The in-app scheduler (lib/cron/scheduler.ts,
+// started from instrumentation.ts) ticks periodically, finds enabled jobs whose
+// nextRunAt is due, and runs the handler registered for `type`. Toggle `enabled`
+// from the dashboard to turn a job on/off.
+model CronJob {
+  id   String      @id @default(uuid())
+  name String
+  type CronJobType
+
+  enabled         Boolean @default(false)
+  intervalSeconds Int     @default(60) @map("interval_seconds")
+
+  // Scheduling + last-run bookkeeping (shown in the dashboard).
+  nextRunAt  DateTime? @map("next_run_at")
+  lastRunAt  DateTime? @map("last_run_at")
+  lastStatus String?   @map("last_status") // SUCCESS | FAILED | SKIPPED
+  lastResult Json?     @map("last_result") // handler return summary
+  lastError  String?   @map("last_error")
+
+  // In-flight guard so a slow run isn't started again by the next tick.
+  isRunning    Boolean   @default(false) @map("is_running")
+  runStartedAt DateTime? @map("run_started_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([enabled, nextRunAt])
+  @@map("cron_jobs")
+}
+
+// Unified, append-only log stream. Segmented by `category`; `event` is a free
+// string code (e.g. "cronjob.started") so new events need no migration. The
+// reference is loose (entityType + entityId, no FK) on purpose — a log should
+// survive even if the thing it refers to is deleted. `correlationId` groups the
+// entries emitted by a single operation (e.g. one cron run).
+model Log {
+  id String @id @default(uuid())
+
+  category LogCategory
+  level    LogLevel    @default(INFO)
+  event    String // short code, e.g. "cronjob.started"
+  message  String
+  metadata Json? // structured payload
+
+  correlationId String? @map("correlation_id")
+  entityType    String? @map("entity_type")
+  entityId      String? @map("entity_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([category, createdAt])
+  @@index([level, createdAt])
+  @@index([entityType, entityId])
+  @@index([correlationId])
+  @@map("logs")
+}
+
+model Tag {
+  id   String @id @default(uuid())
+  name String @unique // e.g. north-indian-dev-agency-campaign
+
+  description String?
+  color       String?
+
+  // Optional mapping: this tag's audience belongs to a RecallSync campaign.
+  recallsyncCampaignId String? @map("recallsync_campaign_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  contacts         ContactTag[]
+  gmScraperQueries GmScraperQuery[]
+
+  @@map("tags")
+}
+
+// Explicit join — lets us record when/why a tag was applied to a contact.
+model ContactTag {
+  contactId String @map("contact_id")
+  tagId     String @map("tag_id")
+
+  assignedAt DateTime @default(now()) @map("assigned_at")
+
+  contact Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  tag     Tag     @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([contactId, tagId])
+  @@index([tagId])
+  @@map("contact_tags")
+}
+
+// ---------------------------------------------------------------------------
+// GM Scraper — Google Maps harvest queries (one record per search).
+// Cron RUN_GM_SCRAPER claims PENDING rows, scrapes Maps, imports contacts,
+// and links them via GmScraperQueryContact. autoProcess controls whether
+// contacts land in the selected pipeline stage immediately or wait for manual push.
+// ---------------------------------------------------------------------------
+
+enum GmScraperStatus {
+  PENDING
+  PROCESSING
+  DONE
+  FAILED
+  PAUSED
+}
+
+model GmScraperQuery {
+  id String @id @default(uuid())
+
+  // Maps search string, e.g. "HVAC contractor Orlando FL"
+  query String
+
+  tagId String @map("tag_id")
+  tag   Tag    @relation(fields: [tagId], references: [id], onDelete: Restrict)
+
+  campaignId String?   @map("campaign_id")
+  campaign   Campaign? @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+
+  // Target stage on the campaign's 1:1 pipeline (used when autoProcess is true
+  // or when manually pushing contacts from the query detail page).
+  stageId String? @map("stage_id")
+  stage   Stage?  @relation(fields: [stageId], references: [id], onDelete: SetNull)
+
+  autoProcess Boolean @default(false) @map("auto_process")
+  maxResults  Int     @default(120) @map("max_results")
+
+  status      GmScraperStatus @default(PENDING)
+  resultCount Int?            @map("result_count")
+  lastError   String?         @map("last_error")
+  claimedAt   DateTime?       @map("claimed_at")
+  processedAt DateTime?       @map("processed_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  contacts GmScraperQueryContact[]
+
+  @@index([status, createdAt])
+  @@map("gm_scraper_queries")
+}
+
+model GmScraperQueryContact {
+  queryId   String @map("query_id")
+  contactId String @map("contact_id")
+
+  addedAt DateTime @default(now()) @map("added_at")
+
+  query   GmScraperQuery @relation(fields: [queryId], references: [id], onDelete: Cascade)
+  contact Contact        @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  @@id([queryId, contactId])
+  @@index([contactId])
+  @@map("gm_scraper_query_contacts")
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+// HTTP method for a stage Action.
+enum HttpMethod {
+  GET
+  POST
+  PUT
+  PATCH
+  DELETE
+}
+
+// Per-stage processing state of a contact (PipelineContact.stageStatus).
+enum StageStatus {
+  PENDING
+  PROCESSING
+  FAILED
+  // Parked: a non-advancing (async) action succeeded and we are waiting for an
+  // external callback to decide advancement. Ignored by both the processor
+  // (claims only PENDING) and stale-reclaim (touches only PROCESSING).
+  WAITING
+}
+
+// What a CronJob does when it runs. Each value maps to a handler in
+// lib/cron/registry.ts. Add a value here + a handler there to expose a new job.
+enum CronJobType {
+  PROCESS_PIPELINES
+  DELETE_OLD_LOGS
+  BACKUP_DB
+  RUN_GM_SCRAPER
+}
+
+// Segments the unified Log table. Add a value as new areas start logging.
+enum LogCategory {
+  CRONJOB
+  CONTACT
+  CAMPAIGN
+  PIPELINE
+  STAGE
+  ACTION
+  SYSTEM
+  GM_SCRAPER
+}
+
+// Severity of a log entry — lets the UI highlight problems.
+enum LogLevel {
+  DEBUG
+  INFO
+  WARN
+  ERROR
+}
+
+// Email verification result — the hard gate before sync.
+enum EmailStatus {
+  UNKNOWN
+  VALID
+  INVALID
+  RISKY
+  CATCH_ALL
+}
+
+// Cursor-agent company research lifecycle for CRM enrichment.
+enum EnrichmentStatus {
+  PENDING
+  RUNNING
+  ENRICHED
+  FAILED
+  SKIPPED
+}
+
+// Enrichment fit grade (mirrors RecallSync's lead quality vocabulary).
+enum LeadQuality {
+  UNQUALIFIED
+  LOW
+  MEDIUM
+  HIGH
+  PERFECT
+}

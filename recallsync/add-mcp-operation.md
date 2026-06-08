@@ -16,7 +16,7 @@ three repos so it becomes a callable MCP tool. Use this whenever a requested MCP
 ## Principle
 MCP → REST → tRPC business router → Prisma. Reuse existing pieces; only create what's missing.
 Mirror the **lead** implementation as the reference (`business/lead.router.ts`, `/api/rest/leads`,
-`tools/lead.ts`).
+`tools/lead.ts`). For **list** endpoints, also follow `sops/list-pagination-and-field-selection.md`.
 
 ## Steps
 
@@ -47,23 +47,18 @@ Mirror the **lead** implementation as the reference (`business/lead.router.ts`, 
 - Register in `src/servers/primary.server.ts`: import the tool array + handler, add to the
   `ListToolsRequestSchema` list, and add the `case` in `CallToolRequestSchema`.
 
-### 5. Restart & re-enable  [human step]
-- Tell the user to **restart the MCP dev server** (nodemon's `--watch "*.ts"` does not watch
-  `src/**`, and `.env` never hot-reloads) and **re-enable `recallsync-primary` in Cursor**
-  (a server restart invalidates the cached MCP session).
-- Wait for the user to confirm before running the operation.
+### 5. MCP picks it up automatically (dev mode)
+- `recallsync-mcp` runs in **dev mode with hot reload** (see rule `recallsync-mcp-run`), so it
+  reloads source edits on its own. **No manual MCP restart or Cursor re-enable is needed.**
+- Note: changes to `.env` do NOT hot-reload — only restart for env changes.
 
 ### 6. Run the operation
 - Call the new tool via MCP and verify against a direct REST/DB check if useful.
-
-## Human-in-the-loop
-Step 5 is always a manual checkpoint (restart + re-enable + confirm).
 
 ## Done criteria
 - [ ] Business-context tRPC procedure exists (api-key auth)
 - [ ] REST route exists under `/api/rest`
 - [ ] MCP tool added and registered
-- [ ] Server restarted + Cursor MCP re-enabled
 - [ ] Tool call returns expected data
 
 ## Reference: files touched for a typical operation
