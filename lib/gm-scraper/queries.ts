@@ -23,6 +23,7 @@ export function serializeGmScraperQuery(
     stage: row.stage,
     autoProcess: row.autoProcess,
     maxResults: row.maxResults,
+    region: row.region,
     status: row.status,
     resultCount: row.resultCount,
     lastError: row.lastError,
@@ -57,6 +58,7 @@ export type CreateGmScraperQueryInput = {
   stageId?: string | null;
   autoProcess?: boolean;
   maxResults?: number;
+  region?: string;
 };
 
 async function validateStageForCampaign(
@@ -115,6 +117,7 @@ export async function createGmScraperQuery(input: CreateGmScraperQueryInput) {
       stageId: input.stageId ?? null,
       autoProcess: input.autoProcess === true,
       maxResults,
+      region: (input.region?.trim().toUpperCase() || "IN").slice(0, 2),
       status: GmScraperStatus.PENDING,
     },
     include: queryInclude,

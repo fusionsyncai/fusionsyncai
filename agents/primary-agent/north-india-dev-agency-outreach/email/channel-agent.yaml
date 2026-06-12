@@ -7,23 +7,34 @@ agent:
   provider: N8N
   baseAgentType: FLOW
   n8nWorkflowId: c372cd48-f68e-4627-8c08-ee0cc1a3a9c9   # "Recall - Fusion - Send Email - SK Brevo"
-  isActive: false   # created paused; activate only after testing + approval
+  isActive: true    # live is active (DRAFT agentMode — replies create HITL drafts)
+  agentMode: DRAFT  # reply handling drafts for approval, does not auto-send
 
 # FLOW agents: behavior lives in the exported bundle, not a single prompt file.
 flow:
   file: channel-agent-flow.json
   entryNodeId: obj-outreach
-  nodes: 3 objectives (Outreach & Engage -> Explore Overlap & Offer Next Step -> Confirm & Hand Off)
+  nodes: 4 objectives (Outreach & Engage -> {How the Pilot Works | Explore Overlap & Qualify} -> Book the Audit Call). Call CTA + booking link live ONLY in Book the Audit Call (obj-book); reached via wants_next_step on clear interest.
   campaign: north-india-dev-agency-outreach   # outreach driven by this campaign
 
 synced: true                     # currentFlow draft pushed via set-channel-agent-flow-draft
-published_flow_state: draft      # draft | diverged | published
-last_synced_at: 2026-06-05T09:10:10Z
-last_pulled_at:
-live_updated_at: 2026-06-05T09:10:10Z
+published_flow_state: draft      # draft | diverged | published (live `flow` is still the placeholder)
+last_synced_at: 2026-06-12T15:30:58.187Z
+last_pulled_at: 2026-06-12T14:50:00.000Z
+live_updated_at: 2026-06-12T15:30:58.187Z
 
 owner: vishal
 created: 2026-06-05
-updated: 2026-06-05
+updated: 2026-06-12
 changelog:
   - "2026-06-05: created North India Outreach Email (FLOW, N8N Brevo email) on prod — id 406cbb17-34e9-4353-bc2d-a59df03bf109; pushed 3-objective outreach flow draft to currentFlow (not published, paused). Reused from dev Brain Email flow."
+  - "2026-06-12: pulled live (live was ahead, updatedAt 2026-06-07T09:46:32.253Z). currentFlow draft identical to local; metadata reconciled — isActive now true, agentMode DRAFT. Published `flow` still the default placeholder (draft-only)."
+  - "2026-06-12: prompt update — reply drafts now output a simple HTML body only (no subject) using the same fixed-width wrapper + FusionSync footer as the automation emails. Pushed to currentFlow draft (publish=false); live updatedAt 2026-06-12T13:38:51.342Z."
+  - "2026-06-12: test revealed Confirm & Hand Off objective still allowed plain text; added HTML-output instruction there too and re-pushed currentFlow draft. Verified test-channel-agent returns wrapped HTML. Live updatedAt 2026-06-12T13:42:15.624Z."
+  - "2026-06-12: HTML formatting pass — wrapper now LEFT-aligned (margin:0, was margin:0 auto), allow <strong> for bold (esp. founder name in body), banned em dashes, short paragraphs with line break after the opening line, footer name 'Shubham' -> 'Shubham K'. Pushed to currentFlow draft (publish=false); verified via test-channel-agent. Live updatedAt 2026-06-12T13:52:50.364Z."
+  - "2026-06-12: set default email subject via currentFlowSettings.model.firstMessage = 'quick question' (small, non-marketing; runtime uses it as the default when no per-message subject is supplied). Pushed draft-only through the new set-channel-agent-flow-draft flowSettings param. Live updatedAt 2026-06-12T14:31:43.593Z."
+  - "2026-06-12: tightened HTML prompt so 'Thanks for confirming.' must render as its own first paragraph. Re-pushed draft with flowSettings.model.firstMessage = 'quick question'; verified test-channel-agent output has <p>Thanks for confirming.</p>. Live updatedAt 2026-06-12T14:35:38.029Z."
+  - "2026-06-12: subject reverted to owner's preferred 'A quick thought on overlap' (currentFlowSettings.model.firstMessage). Draft-only; runtime uses currentFlowSettings over the published 'quick question'. Live updatedAt 2026-06-12T14:40:43.923Z."
+  - "2026-06-12: prompt + flow overhaul. (1) Persona fix — base prompt now hard-locks first-person 'you ARE Shubham, never third-person self-reference, YOU follow up'; rewrote Confirm objective (was 'Shubham from FusionSync will follow up' -> 'I'll put the specifics together and send them over'); removed the bad <strong> example. (2) Added a FAQ block to the base prompt (cost/free pilot + external running costs, time, white-label, who/legit, NDA, 'we have devs', stack, not-now). (3) New objective 'How the Pilot Works' (obj-pilot) reachable from Outreach and Explore via new outcome asks_how_pilot_works. Re-pushed currentFlow draft (publish=false) with flowSettings.model.firstMessage='A quick thought on overlap'; verified 3 scenarios (cost FAQ, pilot branch, handoff persona) via clear+test-channel-agent."
+  - "2026-06-12: call-outcome update — the AI audit call is now the main conversion outcome. Replaced the final Confirm objective with 'Book the Audit Call' (obj-book), added the Cal.com booking link (https://cal.com/fusionsyncai/ai-audit), and updated Explore/Pilot instructions to proactively move interested replies toward booking the audit call even when the lead does not mention a call. Verified explicit-call and no-call-mentioned scenarios via clear+test-channel-agent."
+  - "2026-06-12: FIX CTA leakage — removed the 'next step is the audit call' section from the base prompt and stripped the call CTA + booking link from Explore (renamed 'Explore Overlap & Qualify') and 'How the Pilot Works'. Those stages now only answer + qualify. The call CTA and Cal.com link now live ONLY in obj-book, reached via wants_next_step (broadened to fire on clear interest / asking about next steps). Verified: 'what do you take on?' answers with NO call/link; 'we'd love to move forward, what are next steps?' routes to obj-book and shares the link. Draft-only (publish=false)."

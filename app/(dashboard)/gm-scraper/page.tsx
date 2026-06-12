@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { MapPin, Pause, Play, Plus, RotateCcw, Trash2 } from "lucide-react";
 
+import { REGIONS } from "@/lib/phone";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -54,6 +55,7 @@ type GmScraperQueryRow = {
   stage: { id: string; name: string; pipelineId: string } | null;
   autoProcess: boolean;
   maxResults: number;
+  region: string;
   status: string;
   resultCount: number | null;
   lastError: string | null;
@@ -100,6 +102,7 @@ export default function GmScraperPage() {
   const [formStageId, setFormStageId] = useState<string | null>(null);
   const [formAutoProcess, setFormAutoProcess] = useState(false);
   const [formMaxResults, setFormMaxResults] = useState("120");
+  const [formRegion, setFormRegion] = useState("IN");
   const [newTagName, setNewTagName] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -185,6 +188,7 @@ export default function GmScraperPage() {
     setFormStageId(null);
     setFormAutoProcess(false);
     setFormMaxResults("120");
+    setFormRegion("IN");
     setNewTagName("");
     setFormError(null);
     setStages([]);
@@ -240,6 +244,7 @@ export default function GmScraperPage() {
           stageId: formStageId,
           autoProcess: formAutoProcess,
           maxResults,
+          region: formRegion,
         }),
       });
 
@@ -565,6 +570,27 @@ export default function GmScraperPage() {
                 Auto-process (place contacts in stage when done)
               </span>
             </label>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-muted-foreground">
+                Phone region
+              </label>
+              <Select value={formRegion} onValueChange={(v) => v && setFormRegion(v)}>
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.keys(REGIONS).map((code) => (
+                    <SelectItem key={code} value={code}>
+                      {code} (+{REGIONS[code].callingCode})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Local numbers get +{REGIONS[formRegion]?.callingCode ?? "…"}; leading 0 is stripped.
+              </p>
+            </div>
 
             <div className="space-y-1.5">
               <label className="text-xs font-medium text-muted-foreground">

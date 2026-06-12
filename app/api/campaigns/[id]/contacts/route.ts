@@ -72,8 +72,13 @@ export async function GET(
         select: {
           id: true,
           name: true,
+          email: true,
+          companyName: true,
+          companyShortName: true,
           quality: true,
           emailStatus: true,
+          // Used by the configurable columns (personalizedHighlight, mailbox).
+          customData: true,
           // Current placement in THIS campaign's pipeline. When the campaign
           // has no pipeline, the empty `where` id matches nothing (no rows),
           // keeping a single stable result type for the typechecker.
@@ -92,12 +97,28 @@ export async function GET(
 
   const contacts = rows.map((row) => {
     const placement = row.contact.pipelines[0];
+    const customData =
+      row.contact.customData && typeof row.contact.customData === "object" &&
+      !Array.isArray(row.contact.customData)
+        ? (row.contact.customData as Record<string, unknown>)
+        : {};
+    const personalizedHighlight =
+      typeof customData.personalizedHighlight === "string"
+        ? customData.personalizedHighlight
+        : null;
+    const mailbox =
+      typeof customData.mailbox === "string" ? customData.mailbox : null;
 
     return {
       id: row.contact.id,
       name: row.contact.name,
+      email: row.contact.email,
+      companyName: row.contact.companyName,
+      companyShortName: row.contact.companyShortName,
       quality: row.contact.quality,
       emailStatus: row.contact.emailStatus,
+      personalizedHighlight,
+      mailbox,
       addedAt: row.addedAt.toISOString(),
       stage: placement?.stage ?? null,
       stageStatus: placement?.stageStatus ?? null,

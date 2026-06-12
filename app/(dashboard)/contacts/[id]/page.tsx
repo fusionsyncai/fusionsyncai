@@ -21,6 +21,15 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+const STAGE_STATUSES = ["PENDING", "PROCESSING", "FAILED", "WAITING"] as const;
 
 type Tag = { id: string; name: string; color: string | null; assignedAt: string };
 type CampaignRef = { id: string; name: string; addedAt: string };
@@ -194,7 +203,6 @@ export default function ContactDetailPage({
 
   const refresh = useCallback(async () => {
     try {
-      setError(null);
       const response = await fetch(`/api/contacts/${id}`, { cache: "no-store" });
       if (response.status === 404) {
         throw new Error("Contact not found");
@@ -203,6 +211,7 @@ export default function ContactDetailPage({
         throw new Error("Failed to load contact");
       }
       const data = (await response.json()) as { contact: ContactDetail };
+      setError(null);
       setContact(data.contact);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
@@ -210,6 +219,39 @@ export default function ContactDetailPage({
       setIsLoading(false);
     }
   }, [id]);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void refresh();
+  }, [refresh]);
+
+  const [savingPipelineId, setSavingPipelineId] = useState<string | null>(null);
+
+  async function updatePlacement(
+    pipelineId: string,
+    patch: { stageId?: string; stageStatus?: string },
+  ) {
+    setSavingPipelineId(pipelineId);
+    setError(null);
+    try {
+      const response = await fetch(`/api/contacts/${id}/pipeline`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pipelineId, ...patch }),
+      });
+      if (!response.ok) {
+        const data = (await response.json().catch(() => null)) as {
+          error?: string;
+        } | null;
+        throw new Error(data?.error ?? "Failed to update placement");
+      }
+      await refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to update placement");
+    } finally {
+      setSavingPipelineId(null);
+    }
+  }
 
   if (isLoading) {
     return (
@@ -443,7 +485,7 @@ export default function ContactDetailPage({
                 </p>
               ) : (
                 contact.pipelines.map((membership) => (
-                  <div key={membership.pipelineId} className="space-y-2">
+                  <div key={membership.pipelineId} className="space-y-2.5">
                     <div className="flex items-center justify-between gap-2">
                       <span className="text-sm font-medium">
                         {membership.pipelineName}
@@ -453,8 +495,65 @@ export default function ContactDetailPage({
                       </Badge>
                     </div>
                     <StageTrack membership={membership} />
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="space-y-1">
+                        <label className="text-xs text-muted-foreground">
+                          Stage
+                        </label>
+                        <Select
+                          value={membership.currentStageId}
+                          onValueChange={(v) =>
+                            v &&
+                            void updatePlacement(membership.pipelineId, {
+                              stageId: v,
+                            })
+                          }
+                          disabled={savingPipelineId === membership.pipelineId}
+                        >
+                          <SelectTrigger className="w-full" size="sm">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {membership.stages.map((stage) => (
+                              <SelectItem key={stage.id} value={stage.id}>
+                                {stage.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-xs text-muted-foreground">
+                          Status
+                        </label>
+                        <Select
+                          value={membership.stageStatus}
+                          onValueChange={(v) =>
+                            v &&
+                            void updatePlacement(membership.pipelineId, {
+                              stageStatus: v,
+                            })
+                          }
+                          disabled={savingPipelineId === membership.pipelineId}
+                        >
+                          <SelectTrigger className="w-full" size="sm">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {STAGE_STATUSES.map((status) => (
+                              <SelectItem key={status} value={status}>
+                                {formatLabel(status)}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
                     <p className="text-xs text-muted-foreground">
                       In stage since {formatDate(membership.addedToStageAt)}
+                      {savingPipelineId === membership.pipelineId
+                        ? " · saving…"
+                        : ""}
                     </p>
                   </div>
                 ))

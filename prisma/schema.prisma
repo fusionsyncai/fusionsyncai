@@ -48,8 +48,20 @@ model Contact {
   phone       String?
   linkedinUrl String?     @unique @map("linkedin_url")
 
+  // Location (mirrors RecallSync Lead: country, ianaTimezone, city, state).
+  // country is ISO-3166 alpha-2 (e.g. "IN"); timezone is IANA (e.g. "Asia/Kolkata").
+  country  String?
+  timezone String? // IANA tz, mapped to RecallSync's ianaTimezone on sync
+  city     String?
+  state    String?
+
   // Embedded company (denormalized by choice)
   companyName          String? @map("company_name")
+  // Everyday display/brand name for email copy — legal suffixes and
+  // parentheticals stripped, but the brand kept as normally written
+  // (e.g. "JSR Solutions" for "JSR Solutions (JSR Technologies Pvt. Ltd.)").
+  // Produced by enrichment; maps to RecallSync Lead.companyShortName on sync.
+  companyShortName     String? @map("company_short_name")
   companyWebsite       String? @map("company_website")
   companyDomain        String? @map("company_domain")
   companyEmployeeCount Int?    @map("company_employee_count")
@@ -94,6 +106,16 @@ model Campaign {
 
   name        String
   description String?
+
+  // Sending mailboxes for this campaign's outreach, as a JSON array of email
+  // addresses, e.g. ["shubh@tryfusionsync.com", "shubham@tryfusionsync.com"].
+  // On campaign add, a lead is assigned one (least-loaded, sticky) into
+  // customData.mailbox so all of its emails send from the same box.
+  mailboxes Json?
+
+  // Ordered list of contact-table column keys shown on the campaign Contacts
+  // tab (see lib/campaign-columns.ts CONTACT_COLUMNS). Null/empty -> UI default.
+  contactColumns Json? @map("contact_columns")
 
   // Optional mapping to the live RecallSync campaign this local CRM segment feeds.
   recallsyncCampaignId String? @unique @map("recallsync_campaign_id")
@@ -406,6 +428,11 @@ model GmScraperQuery {
 
   autoProcess Boolean @default(false) @map("auto_process")
   maxResults  Int     @default(120) @map("max_results")
+
+  // Default phone region (ISO-3166 alpha-2) for this harvest. Locally-written
+  // numbers are normalized to +<callingCode>… using this; also seeds the
+  // contact's country/timezone. See lib/phone.ts REGIONS.
+  region String @default("IN")
 
   status      GmScraperStatus @default(PENDING)
   resultCount Int?            @map("result_count")

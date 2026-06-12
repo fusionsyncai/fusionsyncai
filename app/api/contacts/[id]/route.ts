@@ -1,7 +1,26 @@
+import { Prisma } from "@/generated/prisma/client";
 import { deleteContact } from "@/lib/contacts-delete";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
+
+// Editable scalar string fields exposed via PATCH. Pass null/empty to clear.
+const EDITABLE_STRING_FIELDS = [
+  "name",
+  "firstName",
+  "lastName",
+  "title",
+  "companyName",
+  "companyShortName",
+  "companyWebsite",
+  "companyDomain",
+  "companyIndustry",
+  "companyLocation",
+  "city",
+  "state",
+  "country",
+  "timezone",
+] as const;
 
 export async function GET(
   _request: Request,
@@ -22,6 +41,7 @@ export async function GET(
       phone: true,
       linkedinUrl: true,
       companyName: true,
+      companyShortName: true,
       companyWebsite: true,
       companyDomain: true,
       companyEmployeeCount: true,
@@ -118,6 +138,60 @@ export async function GET(
       })),
     },
   });
+}
+
+export async function PATCH(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const { id } = await params;
+  const body = (await request.json().catch(() => null)) as Record<
+    string,
+    unknown
+  > | null;
+
+  if (!body) {
+    return Response.json({ error: "Invalid JSON body" }, { status: 400 });
+  }
+
+  const data: Record<string, string | null> = {};
+  for (const field of EDITABLE_STRING_FIELDS) {
+    if (!(field in body)) continue;
+    const raw = body[field];
+    let next: string | null = null;
+    if (typeof raw === "string") {
+      const trimmed = raw.trim();
+      next = trimmed ? trimmed : null;
+    } else if (raw !== null) {
+      continue;
+    }
+    // `name` is non-nullable — skip clears rather than violate the column.
+    if (field === "name" && next === null) continue;
+    data[field] = next;
+  }
+
+  if (Object.keys(data).length === 0) {
+    return Response.json(
+      { error: "No editable fields provided" },
+      { status: 400 },
+    );
+  }
+
+  try {
+    const contact = await prisma.contact.update({
+      where: { id },
+      data: data as Prisma.ContactUpdateInput,
+      select: {
+        id: true,
+        name: true,
+        companyName: true,
+        companyShortName: true,
+      },
+    });
+    return Response.json({ contact });
+  } catch {
+    return Response.json({ error: "Contact not found" }, { status: 404 });
+  }
 }
 
 export async function DELETE(

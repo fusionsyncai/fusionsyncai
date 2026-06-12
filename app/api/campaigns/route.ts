@@ -1,4 +1,6 @@
+import { parseContactColumns } from "@/lib/campaign-columns";
 import { createCampaignWithPipeline } from "@/lib/campaigns";
+import { parseMailboxes } from "@/lib/mailboxes";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -12,6 +14,7 @@ export async function GET() {
       name: true,
       description: true,
       recallsyncCampaignId: true,
+      mailboxes: true,
       createdAt: true,
       _count: {
         select: {
@@ -24,6 +27,7 @@ export async function GET() {
   return Response.json({
     campaigns: campaigns.map((campaign) => ({
       ...campaign,
+      mailboxes: parseMailboxes(campaign.mailboxes),
       createdAt: campaign.createdAt.toISOString(),
     })),
   });
@@ -34,6 +38,8 @@ export async function POST(request: Request) {
     name?: unknown;
     description?: unknown;
     recallsyncCampaignId?: unknown;
+    mailboxes?: unknown;
+    contactColumns?: unknown;
   } | null;
 
   const name = typeof body?.name === "string" ? body.name.trim() : "";
@@ -50,10 +56,19 @@ export async function POST(request: Request) {
       typeof body?.recallsyncCampaignId === "string"
         ? body.recallsyncCampaignId
         : null,
+    mailboxes: parseMailboxes(body?.mailboxes),
+    contactColumns: parseContactColumns(body?.contactColumns),
   });
 
   return Response.json(
-    { campaign: { ...campaign, createdAt: campaign.createdAt.toISOString() } },
+    {
+      campaign: {
+        ...campaign,
+        mailboxes: parseMailboxes(campaign.mailboxes),
+        contactColumns: parseContactColumns(campaign.contactColumns),
+        createdAt: campaign.createdAt.toISOString(),
+      },
+    },
     { status: 201 },
   );
 }

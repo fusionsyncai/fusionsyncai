@@ -2,6 +2,7 @@ import {
   deleteCampaignStage,
   renameCampaignStage,
   reorderCampaignStage,
+  retryFailedCampaignStageContacts,
   setStageAction,
   setStageAutoProcessing,
   type StageDirection,
@@ -37,7 +38,22 @@ export async function PATCH(
     actionId?: unknown;
     name?: unknown;
     autoProcessing?: unknown;
+    retryFailed?: unknown;
   } | null;
+
+  // Reset this stage's FAILED contacts back to PENDING for reprocessing.
+  if (body && body.retryFailed === true) {
+    const result = await retryFailedCampaignStageContacts(id, stageId);
+
+    if (!result) {
+      return Response.json(
+        { error: "Campaign or stage not found" },
+        { status: 404 },
+      );
+    }
+
+    return Response.json(result);
+  }
 
   // Toggle auto-processing when autoProcessing is provided (boolean).
   if (body && "autoProcessing" in body) {

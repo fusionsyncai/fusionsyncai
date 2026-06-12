@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import {
@@ -8,6 +8,8 @@ import {
   Check,
   ChevronLeft,
   ChevronRight,
+  Columns3,
+  Loader2,
   Pencil,
   Play,
   Plus,
@@ -58,8 +60,22 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { type TagOption } from "@/components/tags/tag-picker";
+import {
+  CONTACT_COLUMNS,
+  DEFAULT_CONTACT_COLUMNS,
+  type ContactColumnKey,
+} from "@/lib/campaign-columns";
 
 type ContactStage = {
   id: string;
@@ -70,8 +86,13 @@ type ContactStage = {
 type Contact = {
   id: string;
   name: string;
+  email: string | null;
+  companyName: string | null;
+  companyShortName: string | null;
   quality: string;
   emailStatus: string;
+  personalizedHighlight: string | null;
+  mailbox: string | null;
   addedAt: string;
   stage: ContactStage | null;
   stageStatus: string | null;
@@ -130,6 +151,8 @@ type CampaignDetail = {
     name: string;
     description: string | null;
     recallsyncCampaignId: string | null;
+    mailboxes: string[];
+    contactColumns: ContactColumnKey[];
     createdAt: string;
     contactCount: number;
     pipeline: Pipeline | null;
@@ -231,6 +254,31 @@ export default function CampaignDetailPage() {
   const [isBulkMoving, setIsBulkMoving] = useState(false);
   const [bulkMsg, setBulkMsg] = useState<string | null>(null);
 
+  // Manual per-contact processing: run a single contact's current stage action
+  // on demand (e.g. test the Sync action for one contact without arming the
+  // stage's auto-process). Keyed by contactId so only that row shows a spinner.
+  const [processingContactId, setProcessingContactId] = useState<string | null>(
+    null,
+  );
+  const [contactProcessMsg, setContactProcessMsg] = useState<string | null>(
+    null,
+  );
+
+  // Per-campaign sending mailboxes (assigned to leads on campaign add).
+  const [newMailbox, setNewMailbox] = useState("");
+  const [isSavingMailboxes, setIsSavingMailboxes] = useState(false);
+  const [mailboxMsg, setMailboxMsg] = useState<string | null>(null);
+
+  // Settings tab: editable campaign description. Seeded from the loaded campaign
+  // once (keyed by id) so background reloads don't clobber an in-progress edit.
+  const [descDraft, setDescDraft] = useState("");
+  const [isSavingDesc, setIsSavingDesc] = useState(false);
+  const [descMsg, setDescMsg] = useState<string | null>(null);
+  const seededDescForId = useRef<string | null>(null);
+
+  // Per-campaign configurable contact-table columns.
+  const [isSavingColumns, setIsSavingColumns] = useState(false);
+
   const loadContacts = useCallback(async () => {
     setContactsLoading(true);
     try {
@@ -269,6 +317,115 @@ export default function CampaignDetailPage() {
 
     setData((await response.json()) as CampaignDetail);
   }, [campaignId]);
+
+  const saveMailboxes = useCallback(
+    async (mailboxes: string[]) => {
+      setIsSavingMailboxes(true);
+      setMailboxMsg(null);
+      try {
+        const response = await fetch(`/api/campaigns/${campaignId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ mailboxes }),
+        });
+        if (!response.ok) throw new Error("Failed to save mailboxes");
+        const json = (await response.json()) as {
+          campaign: { mailboxes: string[] };
+        };
+        setData((prev) =>
+          prev
+            ? {
+                ...prev,
+                campaign: {
+                  ...prev.campaign,
+                  mailboxes: json.campaign.mailboxes,
+                },
+              }
+            : prev,
+        );
+        setNewMailbox("");
+      } catch (error) {
+        setMailboxMsg(
+          error instanceof Error ? error.message : "Failed to save mailboxes",
+        );
+      } finally {
+        setIsSavingMailboxes(false);
+      }
+    },
+    [campaignId],
+  );
+
+  useEffect(() => {
+    if (data && seededDescForId.current !== data.campaign.id) {
+      setDescDraft(data.campaign.description ?? "");
+      seededDescForId.current = data.campaign.id;
+    }
+  }, [data]);
+
+  const saveDescription = useCallback(async () => {
+    setIsSavingDesc(true);
+    setDescMsg(null);
+    try {
+      const response = await fetch(`/api/campaigns/${campaignId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ description: descDraft.trim() || null }),
+      });
+      if (!response.ok) throw new Error("Failed to save description");
+      const json = (await response.json()) as {
+        campaign: { description: string | null };
+      };
+      setData((prev) =>
+        prev
+          ? {
+              ...prev,
+              campaign: {
+                ...prev.campaign,
+                description: json.campaign.description,
+              },
+            }
+          : prev,
+      );
+      setDescMsg("Saved");
+    } catch (error) {
+      setDescMsg(
+        error instanceof Error ? error.message : "Failed to save description",
+      );
+    } finally {
+      setIsSavingDesc(false);
+    }
+  }, [campaignId, descDraft]);
+
+  const saveColumns = useCallback(
+    async (contactColumns: ContactColumnKey[]) => {
+      setIsSavingColumns(true);
+      try {
+        const response = await fetch(`/api/campaigns/${campaignId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ contactColumns }),
+        });
+        if (!response.ok) throw new Error("Failed to save columns");
+        const json = (await response.json()) as {
+          campaign: { contactColumns: ContactColumnKey[] };
+        };
+        setData((prev) =>
+          prev
+            ? {
+                ...prev,
+                campaign: {
+                  ...prev.campaign,
+                  contactColumns: json.campaign.contactColumns,
+                },
+              }
+            : prev,
+        );
+      } finally {
+        setIsSavingColumns(false);
+      }
+    },
+    [campaignId],
+  );
 
   const loadActions = useCallback(async () => {
     const response = await fetch("/api/actions", { cache: "no-store" });
@@ -491,6 +648,126 @@ export default function CampaignDetailPage() {
   const { campaign, aggregates } = data;
   const stages = campaign.pipeline?.stages ?? [];
 
+  // Effective columns: the campaign's saved selection, or a sensible default.
+  const activeColumns: ContactColumnKey[] =
+    campaign.contactColumns.length > 0
+      ? campaign.contactColumns
+      : DEFAULT_CONTACT_COLUMNS;
+
+  function toggleColumn(key: ContactColumnKey) {
+    const selected = new Set<ContactColumnKey>(activeColumns);
+    if (selected.has(key)) {
+      selected.delete(key);
+    } else {
+      selected.add(key);
+    }
+    // Persist in catalog order so columns always render in a stable sequence.
+    const next = CONTACT_COLUMNS.map((column) => column.key).filter((columnKey) =>
+      selected.has(columnKey),
+    );
+    void saveColumns(next);
+  }
+
+  function columnHeadClass(key: ContactColumnKey): string | undefined {
+    if (key === "action") return "w-10";
+    if (key === "name") return "w-56";
+    if (key === "personalizedHighlight") return "w-104 max-w-104";
+    return undefined;
+  }
+
+  function renderContactCell(key: ContactColumnKey, contact: Contact) {
+    switch (key) {
+      case "action":
+        return (
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            aria-label={`Process ${contact.name}`}
+            title="Run this contact's current stage action"
+            disabled={processingContactId !== null || !contact.stage}
+            onClick={() => void handleProcessContact(contact.id)}
+          >
+            {processingContactId === contact.id ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              <Play className="size-4" />
+            )}
+          </Button>
+        );
+      case "name":
+        return (
+          <Link
+            href={`/contacts/${contact.id}`}
+            className="block max-w-56 truncate font-medium hover:underline"
+            title={contact.name}
+          >
+            {contact.name}
+          </Link>
+        );
+      case "companyName":
+        return contact.companyName ? (
+          <span className="block max-w-48 truncate" title={contact.companyName}>
+            {contact.companyName}
+          </span>
+        ) : (
+          <span className="text-xs text-muted-foreground">—</span>
+        );
+      case "companyShortName":
+        return contact.companyShortName ? (
+          <span>{contact.companyShortName}</span>
+        ) : (
+          <span className="text-xs text-muted-foreground">—</span>
+        );
+      case "personalizedHighlight":
+        return contact.personalizedHighlight ? (
+          <span
+            className="block w-104 max-w-104 truncate text-sm text-muted-foreground"
+            title={contact.personalizedHighlight}
+          >
+            {contact.personalizedHighlight}
+          </span>
+        ) : (
+          <span className="text-xs text-muted-foreground">—</span>
+        );
+      case "mailbox":
+        return contact.mailbox ? (
+          <span className="font-mono text-xs">{contact.mailbox}</span>
+        ) : (
+          <span className="text-xs text-muted-foreground">—</span>
+        );
+      case "email":
+        return contact.email ? (
+          <span className="block max-w-56 truncate" title={contact.email}>
+            {contact.email}
+          </span>
+        ) : (
+          <span className="text-xs text-muted-foreground">—</span>
+        );
+      case "stage":
+        return contact.stage ? (
+          <Badge variant="secondary">{contact.stage.name}</Badge>
+        ) : (
+          <span className="text-xs text-muted-foreground">—</span>
+        );
+      case "status":
+        return contact.stageStatus ? (
+          <span className="text-xs text-muted-foreground">
+            {formatLabel(contact.stageStatus)}
+          </span>
+        ) : (
+          <span className="text-xs text-muted-foreground">—</span>
+        );
+      case "quality":
+        return <Badge>{formatLabel(contact.quality)}</Badge>;
+      case "emailStatus":
+        return (
+          <Badge variant="outline">{formatLabel(contact.emailStatus)}</Badge>
+        );
+      default:
+        return null;
+    }
+  }
+
   function handleStageFilterChange(value: string) {
     setStageFilter(value);
     setContactsPage(1);
@@ -532,6 +809,45 @@ export default function CampaignDetailPage() {
     }
   }
 
+  async function handleProcessContact(contactId: string) {
+    if (processingContactId) return;
+
+    setProcessingContactId(contactId);
+    setContactProcessMsg(null);
+    try {
+      const response = await fetch(
+        `/api/campaigns/${campaignId}/contacts/${contactId}/process`,
+        { method: "POST" },
+      );
+      const json = (await response.json().catch(() => null)) as {
+        ok?: boolean;
+        error?: string;
+        stageName?: string;
+        statusCode?: number;
+        advanced?: boolean;
+      } | null;
+
+      if (!response.ok || !json) {
+        setContactProcessMsg(json?.error ?? "Processing failed");
+      } else if (json.ok) {
+        const where = json.stageName ? ` (${json.stageName})` : "";
+        setContactProcessMsg(
+          json.advanced
+            ? `Success${where} · advanced to next stage`
+            : `Success${where}`,
+        );
+      } else {
+        setContactProcessMsg(json.error ?? "Action did not succeed");
+      }
+
+      await Promise.all([loadCampaign(), loadContacts()]);
+    } catch {
+      setContactProcessMsg("Processing failed");
+    } finally {
+      setProcessingContactId(null);
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div className="space-y-2">
@@ -564,6 +880,7 @@ export default function CampaignDetailPage() {
           <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
           <TabsTrigger value="contacts">Contacts</TabsTrigger>
           <TabsTrigger value="pipeline">Pipeline</TabsTrigger>
+          <TabsTrigger value="settings">Settings</TabsTrigger>
         </TabsList>
 
         <TabsContent value="dashboard" className="space-y-6 pt-4">
@@ -652,13 +969,55 @@ export default function CampaignDetailPage() {
                     </SelectContent>
                   </Select>
                 </div>
-                <span className="text-xs text-muted-foreground">
-                  {contactsData
-                    ? `${contactsData.total} contact${
-                        contactsData.total === 1 ? "" : "s"
-                      }`
-                    : null}
-                </span>
+                <div className="flex items-center gap-3">
+                  {contactProcessMsg ? (
+                    <span className="text-xs text-muted-foreground">
+                      {contactProcessMsg}
+                    </span>
+                  ) : null}
+                  <span className="text-xs text-muted-foreground">
+                    {contactsData
+                      ? `${contactsData.total} contact${
+                          contactsData.total === 1 ? "" : "s"
+                        }`
+                      : null}
+                  </span>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger
+                      render={
+                        <Button variant="outline" size="sm" disabled={isSavingColumns}>
+                          {isSavingColumns ? (
+                            <Loader2 className="size-4 animate-spin" />
+                          ) : (
+                            <Columns3 className="size-4" />
+                          )}
+                          Columns
+                        </Button>
+                      }
+                    />
+                    <DropdownMenuContent align="end" className="w-56">
+                      <DropdownMenuGroup>
+                        <DropdownMenuLabel>Visible columns</DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        {CONTACT_COLUMNS.map((column) => {
+                          const checked = activeColumns.includes(column.key);
+                          return (
+                            <DropdownMenuCheckboxItem
+                              key={column.key}
+                              checked={checked}
+                              closeOnClick={false}
+                              // Keep at least one column visible.
+                              disabled={checked && activeColumns.length === 1}
+                              onCheckedChange={() => toggleColumn(column.key)}
+                            >
+                              {column.label}
+                            </DropdownMenuCheckboxItem>
+                          );
+                        })}
+                      </DropdownMenuGroup>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
               </div>
 
               {tags.length > 0 && stages.length > 0 ? (
@@ -735,50 +1094,29 @@ export default function CampaignDetailPage() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Name</TableHead>
-                        <TableHead>Stage</TableHead>
-                        <TableHead>Quality</TableHead>
-                        <TableHead>Email status</TableHead>
+                        {activeColumns.map((key) => {
+                          const meta = CONTACT_COLUMNS.find(
+                            (column) => column.key === key,
+                          );
+                          return (
+                            <TableHead
+                              key={key}
+                              className={columnHeadClass(key)}
+                            >
+                              {key === "action" ? "" : meta?.label}
+                            </TableHead>
+                          );
+                        })}
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {contactsData.contacts.map((contact) => (
                         <TableRow key={contact.id}>
-                          <TableCell className="font-medium">
-                            <Link
-                              href={`/contacts/${contact.id}`}
-                              className="hover:underline"
-                            >
-                              {contact.name}
-                            </Link>
-                          </TableCell>
-                          <TableCell>
-                            {contact.stage ? (
-                              <span className="flex items-center gap-1.5">
-                                <Badge variant="secondary">
-                                  {contact.stage.name}
-                                </Badge>
-                                {contact.stageStatus &&
-                                contact.stageStatus !== "PENDING" ? (
-                                  <span className="text-xs text-muted-foreground">
-                                    {formatLabel(contact.stageStatus)}
-                                  </span>
-                                ) : null}
-                              </span>
-                            ) : (
-                              <span className="text-xs text-muted-foreground">
-                                —
-                              </span>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            <Badge>{formatLabel(contact.quality)}</Badge>
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant="outline">
-                              {formatLabel(contact.emailStatus)}
-                            </Badge>
-                          </TableCell>
+                          {activeColumns.map((key) => (
+                            <TableCell key={key} className={columnHeadClass(key)}>
+                              {renderContactCell(key, contact)}
+                            </TableCell>
+                          ))}
                         </TableRow>
                       ))}
                     </TableBody>
@@ -1042,6 +1380,158 @@ export default function CampaignDetailPage() {
               </div>
             </>
           )}
+        </TabsContent>
+
+        <TabsContent value="settings" className="space-y-6 pt-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Campaign details</CardTitle>
+              <CardDescription>
+                Edit the campaign description. Name and RecallSync mapping are
+                managed at import time and shown here for reference.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-1">
+                  <div className="text-xs text-muted-foreground">Name</div>
+                  <div className="text-sm font-medium">{campaign.name}</div>
+                </div>
+                <div className="space-y-1">
+                  <div className="text-xs text-muted-foreground">
+                    RecallSync campaign
+                  </div>
+                  <div className="truncate font-mono text-sm">
+                    {campaign.recallsyncCampaignId ?? "Not mapped"}
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <div className="text-xs text-muted-foreground">Created</div>
+                  <div className="text-sm">{formatDate(campaign.createdAt)}</div>
+                </div>
+                <div className="space-y-1">
+                  <div className="text-xs text-muted-foreground">Contacts</div>
+                  <div className="text-sm">{campaign.contactCount}</div>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <label
+                  htmlFor="campaign-description"
+                  className="text-xs text-muted-foreground"
+                >
+                  Description
+                </label>
+                <textarea
+                  id="campaign-description"
+                  value={descDraft}
+                  disabled={isSavingDesc}
+                  rows={4}
+                  onChange={(event) => setDescDraft(event.target.value)}
+                  placeholder="What this campaign segment is for…"
+                  className="w-full rounded-lg border border-input bg-transparent px-2.5 py-1.5 text-sm transition-colors outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 dark:bg-input/30"
+                />
+                <div className="flex items-center gap-3">
+                  <Button
+                    size="sm"
+                    onClick={() => void saveDescription()}
+                    disabled={
+                      isSavingDesc ||
+                      descDraft.trim() === (campaign.description ?? "").trim()
+                    }
+                  >
+                    {isSavingDesc ? (
+                      <Loader2 className="size-4 animate-spin" />
+                    ) : (
+                      <Check className="size-4" />
+                    )}
+                    Save description
+                  </Button>
+                  {descMsg ? (
+                    <span className="text-xs text-muted-foreground">
+                      {descMsg}
+                    </span>
+                  ) : null}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Sending mailboxes</CardTitle>
+              <CardDescription>
+                Leads added to this campaign are assigned one of these boxes
+                (evenly, and stuck for life) so every email sends from the same
+                address. Stored on the contact as{" "}
+                <code className="font-mono">customData.mailbox</code>.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {campaign.mailboxes.length > 0 ? (
+                <div className="flex flex-wrap gap-2">
+                  {campaign.mailboxes.map((mailbox) => (
+                    <Badge
+                      key={mailbox}
+                      variant="secondary"
+                      className="gap-1.5 font-mono"
+                    >
+                      {mailbox}
+                      <button
+                        type="button"
+                        aria-label={`Remove ${mailbox}`}
+                        disabled={isSavingMailboxes}
+                        onClick={() =>
+                          void saveMailboxes(
+                            campaign.mailboxes.filter((m) => m !== mailbox),
+                          )
+                        }
+                        className="text-muted-foreground hover:text-foreground"
+                      >
+                        <X className="size-3" />
+                      </button>
+                    </Badge>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-muted-foreground text-sm">
+                  No mailboxes configured — leads won&apos;t be assigned a
+                  sending box.
+                </p>
+              )}
+              <form
+                className="flex gap-2"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  const next = newMailbox.trim().toLowerCase();
+                  if (!next || campaign.mailboxes.includes(next)) {
+                    setNewMailbox("");
+                    return;
+                  }
+                  void saveMailboxes([...campaign.mailboxes, next]);
+                }}
+              >
+                <Input
+                  type="email"
+                  placeholder="name@tryfusionsync.com"
+                  value={newMailbox}
+                  disabled={isSavingMailboxes}
+                  onChange={(event) => setNewMailbox(event.target.value)}
+                  className="max-w-xs"
+                />
+                <Button type="submit" disabled={isSavingMailboxes}>
+                  {isSavingMailboxes ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : (
+                    <Plus className="size-4" />
+                  )}
+                  Add
+                </Button>
+              </form>
+              {mailboxMsg ? (
+                <p className="text-destructive text-sm">{mailboxMsg}</p>
+              ) : null}
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
 

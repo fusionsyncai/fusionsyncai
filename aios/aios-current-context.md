@@ -49,6 +49,11 @@ email outreach to North Indian agencies serving US clients).
   RecallSync campaign `d8949f6e-ec4e-4259-a089-e5fd81fdeffa`.
 - Campaign requirement: each staged contact must include `customData.personalizedHighlight`; also
   mirror the same text as `customData.personalizationHighlight` for the current automation template.
+- Sending mailboxes: `Campaign.mailboxes` is a JSON array of addresses (edit on the campaign
+  Dashboard tab). When a lead is added to a campaign, `lib/mailboxes.assignCampaignMailbox` picks the
+  least-loaded box (sticky for life) into `customData.mailbox`; the Sync action forwards it to the
+  RecallSync lead's `customData.mailbox`. North India campaign is set to
+  `shubh@`/`shubham@tryfusionsync.com`.
 - Seeded local contacts (not email-verified yet): Soft Erector Team (`info@softerector.com`),
   Sandeep Kurien / Technodweep (`sandeep@technodweep.com`), Vishnu Gupta / LastingLabs
   (`info@lastinglabs.com`). All are linked to the local campaign with source URLs in `customData`.

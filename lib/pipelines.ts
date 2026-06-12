@@ -1,3 +1,4 @@
+import { Prisma } from "@/generated/prisma/client";
 import { evaluateActionSuccess, decryptHeaders } from "@/lib/actions";
 import { ensurePipelineForCampaign } from "@/lib/campaigns";
 import { prisma } from "@/lib/prisma";
@@ -239,6 +240,77 @@ export async function addContactsToStage(
   return { moved, created };
 }
 
+export type ContactStageStatus =
+  | "PENDING"
+  | "PROCESSING"
+  | "FAILED"
+  | "WAITING";
+
+// Manually updates a contact's placement in a pipeline: move it to another
+// stage and/or override its stageStatus. Used by the contact detail page so an
+// operator can unstick / re-route a contact by hand. Moving to a different
+// stage appends it to the end and (unless an explicit status is given) resets
+// to PENDING so the processor can pick it up. Returns the updated placement, or
+// null if the contact isn't in the given pipeline.
+export async function setContactPipelinePlacement(
+  contactId: string,
+  pipelineId: string,
+  input: { stageId?: string; stageStatus?: ContactStageStatus },
+) {
+  const placement = await prisma.pipelineContact.findUnique({
+    where: { contactId_pipelineId: { contactId, pipelineId } },
+    select: { id: true, stageId: true },
+  });
+
+  if (!placement) {
+    return null;
+  }
+
+  const data: Prisma.PipelineContactUpdateInput = {};
+
+  const movingStage = input.stageId && input.stageId !== placement.stageId;
+
+  if (input.stageId) {
+    const stage = await prisma.stage.findFirst({
+      where: { id: input.stageId, pipelineId },
+      select: { id: true },
+    });
+    if (!stage) {
+      throw new Error("Stage not found for pipeline");
+    }
+
+    if (movingStage) {
+      const nextOrder = await prisma.pipelineContact.count({
+        where: { stageId: stage.id },
+      });
+      data.stage = { connect: { id: stage.id } };
+      data.order = nextOrder;
+      data.addedToStageAt = new Date();
+      // A manual move starts fresh unless the caller sets a status below.
+      data.stageStatus = "PENDING";
+      data.processingStartedAt = null;
+    }
+  }
+
+  if (input.stageStatus) {
+    data.stageStatus = input.stageStatus;
+    // Clear the in-flight lock unless we are explicitly marking PROCESSING.
+    data.processingStartedAt =
+      input.stageStatus === "PROCESSING" ? new Date() : null;
+  }
+
+  if (Object.keys(data).length === 0) {
+    return { ok: true, changed: false as const };
+  }
+
+  await prisma.pipelineContact.update({
+    where: { id: placement.id },
+    data,
+  });
+
+  return { ok: true, changed: true as const };
+}
+
 // Places one or more contacts into a stage of the campaign's pipeline. Because
 // a contact sits in exactly one stage per pipeline (@@unique contact+pipeline),
 // existing placements are moved to the target stage; new ones are created and
@@ -316,6 +388,41 @@ export async function moveCampaignContactsByTagToStage(
     stages: await stagesForPipeline(pipeline.id),
     matched: contactIds.length,
     ...result,
+  };
+}
+
+// Resets every FAILED placement in a stage back to PENDING so the processor
+// retries them (e.g. after the stage's target service was down). Returns the
+// ordered stage list plus how many rows were reset, or null if the
+// campaign/pipeline/stage can't be resolved.
+export async function retryFailedCampaignStageContacts(
+  campaignId: string,
+  stageId: string,
+) {
+  const pipeline = await ensurePipelineForCampaign(campaignId);
+
+  if (!pipeline) {
+    return null;
+  }
+
+  const stage = pipeline.stages.find((s) => s.id === stageId);
+
+  if (!stage) {
+    return null;
+  }
+
+  const result = await prisma.pipelineContact.updateMany({
+    where: {
+      pipelineId: pipeline.id,
+      stageId: stage.id,
+      stageStatus: "FAILED",
+    },
+    data: { stageStatus: "PENDING", processingStartedAt: null },
+  });
+
+  return {
+    stages: await stagesForPipeline(pipeline.id),
+    reset: result.count,
   };
 }
 
@@ -403,6 +510,8 @@ type ProcessResult = {
   statusCode?: number;
   advancedToStageId?: string | null;
   error?: string;
+  // Service was down/unreachable; the contact was left PENDING (not FAILED).
+  unreachable?: boolean;
 };
 
 type ActionForRun = {
@@ -431,7 +540,15 @@ type EligibleStage = {
 async function runActionForContact(
   action: ActionForRun,
   contact: Record<string, unknown>,
-): Promise<{ ok: boolean; statusCode?: number; error?: string }> {
+): Promise<{
+  ok: boolean;
+  statusCode?: number;
+  error?: string;
+  // True when the target service couldn't be reached (connection refused, DNS,
+  // timeout) or replied with an "unavailable" gateway code. The caller should
+  // leave the contact PENDING and retry later instead of marking it FAILED.
+  unreachable?: boolean;
+}> {
   const context = { contact };
 
   const url = interpolateString(action.url, context);
@@ -473,14 +590,23 @@ async function runActionForContact(
       payload,
     );
 
+    // Gateway "unavailable" codes mean the upstream is down/overloaded — treat
+    // like unreachable so we retry later rather than burning the contact.
+    const unreachable =
+      !ok && [502, 503, 504].includes(response.status);
+
     return {
       ok,
       statusCode: response.status,
+      unreachable,
       error: ok ? undefined : `Success criteria not met (HTTP ${response.status})`,
     };
   } catch (err) {
+    // fetch threw: connection refused, DNS failure, or aborted/timed out — the
+    // service never answered, so this is unreachable, not a real rejection.
     return {
       ok: false,
+      unreachable: true,
       error: err instanceof Error ? err.message : "Request failed",
     };
   } finally {
@@ -626,6 +752,22 @@ async function processOne(
   );
 
   if (!outcome.ok) {
+    // Service unreachable (down/timeout/gateway): don't burn the contact. Release
+    // the claim back to PENDING so a later tick retries it once the service is
+    // back. No FAILED, no failure tags.
+    if (outcome.unreachable) {
+      await prisma.pipelineContact.update({
+        where: { id: candidate.id },
+        data: { stageStatus: "PENDING", processingStartedAt: null },
+      });
+      return {
+        ...base,
+        unreachable: true,
+        statusCode: outcome.statusCode,
+        error: outcome.error,
+      };
+    }
+
     await prisma.pipelineContact.update({
       where: { id: candidate.id },
       data: { stageStatus: "FAILED", processingStartedAt: null },
@@ -720,6 +862,10 @@ async function runStages(
         batch.map((candidate) => processOne(stage, candidate)),
       );
       results.push(...settled);
+
+      // This stage's target service is down — stop here and let the remaining
+      // PENDING contacts retry on a later tick instead of hammering it.
+      if (settled.some((r) => r.unreachable)) break;
     }
   }
 
@@ -730,8 +876,12 @@ function summarize(results: ProcessResult[]) {
   return {
     processed: results.length,
     advanced: results.filter((r) => r.ok).length,
+    // Service was down — left PENDING for retry, not a failure.
+    skippedContacts: results.filter((r) => r.unreachable).length,
     // "claim-lost" means another concurrent run took the row — not a failure.
-    failed: results.filter((r) => !r.ok && r.error !== "claim-lost").length,
+    failed: results.filter(
+      (r) => !r.ok && !r.unreachable && r.error !== "claim-lost",
+    ).length,
     results,
   };
 }
@@ -750,6 +900,109 @@ export async function processPipeline(pipelineId: string) {
   const stages = await loadEligibleStages(pipelineId);
   const results = await runStages(stages, Date.now() + RUN_DEADLINE_MS);
   return summarize(results);
+}
+
+// Manually runs a single contact's CURRENT stage action, on demand (the "process
+// this one contact" button). Unlike processPipeline this ignores the stage's
+// autoProcessing flag — that's the whole point: test/run one contact without
+// arming the stage for the cron. FAILED/WAITING placements are reset to PENDING
+// first so they're claimable (manual retry). Returns null when the campaign has
+// no pipeline; otherwise an outcome envelope.
+export async function processSingleContact(
+  campaignId: string,
+  contactId: string,
+): Promise<{
+  ok: boolean;
+  error?: string;
+  stageName?: string;
+  statusCode?: number;
+  advanced?: boolean;
+} | null> {
+  const pipeline = await ensurePipelineForCampaign(campaignId);
+  if (!pipeline) return null;
+
+  const placement = await prisma.pipelineContact.findUnique({
+    where: { contactId_pipelineId: { contactId, pipelineId: pipeline.id } },
+    select: {
+      id: true,
+      contactId: true,
+      stageId: true,
+      stageStatus: true,
+      stage: {
+        select: {
+          id: true,
+          pipelineId: true,
+          order: true,
+          name: true,
+          action: { select: eligibleStageSelect.action.select },
+        },
+      },
+    },
+  });
+
+  if (!placement) {
+    return { ok: false, error: "Contact is not in this campaign's pipeline" };
+  }
+
+  const action = placement.stage.action;
+  if (!action) {
+    return {
+      ok: false,
+      stageName: placement.stage.name,
+      error: "This stage has no action to run",
+    };
+  }
+
+  // Already mid-flight — don't double-trigger.
+  if (placement.stageStatus === "PROCESSING") {
+    return {
+      ok: false,
+      stageName: placement.stage.name,
+      error: "Contact is already being processed",
+    };
+  }
+
+  // processOne can only claim a PENDING row; reset terminal/parked states so a
+  // manual run can re-process them.
+  if (placement.stageStatus !== "PENDING") {
+    await prisma.pipelineContact.update({
+      where: { id: placement.id },
+      data: { stageStatus: "PENDING", processingStartedAt: null },
+    });
+  }
+
+  const stage: EligibleStage = {
+    id: placement.stage.id,
+    pipelineId: placement.stage.pipelineId,
+    order: placement.stage.order,
+    action: {
+      id: action.id,
+      method: action.method,
+      url: action.url,
+      headers: action.headers,
+      body: action.body,
+      successCriteria: action.successCriteria,
+      batchSize: action.batchSize,
+      concurrency: action.concurrency,
+      advanceOnSuccess: action.advanceOnSuccess,
+      onSuccessTags: action.onSuccessTags,
+      onFailureTags: action.onFailureTags,
+    },
+  };
+
+  const result = await processOne(stage, {
+    id: placement.id,
+    contactId: placement.contactId,
+    stageId: placement.stageId,
+  });
+
+  return {
+    ok: result.ok,
+    error: result.error,
+    stageName: placement.stage.name,
+    statusCode: result.statusCode,
+    advanced: result.ok && Boolean(result.advancedToStageId),
+  };
 }
 
 // TTL row-lock acquire/release (connection-safe, unlike pg advisory locks under

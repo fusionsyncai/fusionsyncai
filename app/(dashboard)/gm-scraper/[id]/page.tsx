@@ -170,10 +170,6 @@ export default function GmScraperDetailPage() {
   }, [load, loadCampaigns]);
 
   useEffect(() => {
-    void loadStages(pushCampaignId);
-  }, [pushCampaignId, loadStages]);
-
-  useEffect(() => {
     if (query?.status !== "PROCESSING") return;
     const timer = setInterval(() => void load().catch(() => {}), 3000);
     return () => clearInterval(timer);
@@ -196,11 +192,6 @@ export default function GmScraperDetailPage() {
     };
     setEditStages(data.pipeline.stages);
   }, []);
-
-  useEffect(() => {
-    if (!editOpen) return;
-    void loadEditStages(editCampaignId);
-  }, [editOpen, editCampaignId, loadEditStages]);
 
   async function handleRunNow() {
     setIsRunning(true);
@@ -300,6 +291,7 @@ export default function GmScraperDetailPage() {
     setEditError(null);
     setEditOpen(true);
     void loadTags();
+    void loadEditStages(query.campaignId);
   }
 
   async function createTag() {
@@ -429,7 +421,7 @@ export default function GmScraperDetailPage() {
               Edit
             </Button>
           )}
-          {(query.status === "PENDING" || query.status === "FAILED") && (
+          {(query.status === "PENDING" || query.status === "FAILED" || query.status === "PROCESSING") && (
             <Button
               variant="outline"
               disabled={isRunning || query.status === "PROCESSING"}
@@ -679,8 +671,10 @@ export default function GmScraperDetailPage() {
               <Select
                 value={editCampaignId ?? "__none__"}
                 onValueChange={(v) => {
-                  setEditCampaignId(v === "__none__" ? null : v);
+                  const campaignId = v === "__none__" ? null : v;
+                  setEditCampaignId(campaignId);
                   setEditStageId(null);
+                  void loadEditStages(campaignId);
                 }}
               >
                 <SelectTrigger className="w-full">

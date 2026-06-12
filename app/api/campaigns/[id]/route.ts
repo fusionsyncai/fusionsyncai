@@ -1,4 +1,6 @@
 import { EmailStatus, LeadQuality } from "@/generated/prisma/client";
+import { parseContactColumns } from "@/lib/campaign-columns";
+import { parseMailboxes } from "@/lib/mailboxes";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -19,6 +21,8 @@ export async function GET(
       name: true,
       description: true,
       recallsyncCampaignId: true,
+      mailboxes: true,
+      contactColumns: true,
       createdAt: true,
       pipeline: {
         select: {
@@ -83,6 +87,8 @@ export async function GET(
       name: campaign.name,
       description: campaign.description,
       recallsyncCampaignId: campaign.recallsyncCampaignId,
+      mailboxes: parseMailboxes(campaign.mailboxes),
+      contactColumns: parseContactColumns(campaign.contactColumns),
       createdAt: campaign.createdAt.toISOString(),
       contactCount: contacts.length,
       pipeline: campaign.pipeline,
@@ -102,20 +108,38 @@ export async function PATCH(
   const { id } = await params;
   const body = (await request.json().catch(() => null)) as {
     description?: unknown;
+    mailboxes?: unknown;
+    contactColumns?: unknown;
   } | null;
 
-  const description =
-    typeof body?.description === "string" ? body.description : null;
+  // Only touch fields the caller actually sent (partial update).
+  const data: {
+    description?: string | null;
+    mailboxes?: string[];
+    contactColumns?: string[];
+  } = {};
+  if (body && "description" in body) {
+    data.description =
+      typeof body.description === "string" ? body.description : null;
+  }
+  if (body && "mailboxes" in body) {
+    data.mailboxes = parseMailboxes(body.mailboxes);
+  }
+  if (body && "contactColumns" in body) {
+    data.contactColumns = parseContactColumns(body.contactColumns);
+  }
 
   try {
     const campaign = await prisma.campaign.update({
       where: { id },
-      data: { description },
+      data,
       select: {
         id: true,
         name: true,
         description: true,
         recallsyncCampaignId: true,
+        mailboxes: true,
+        contactColumns: true,
         createdAt: true,
       },
     });
@@ -123,6 +147,8 @@ export async function PATCH(
     return Response.json({
       campaign: {
         ...campaign,
+        mailboxes: parseMailboxes(campaign.mailboxes),
+        contactColumns: parseContactColumns(campaign.contactColumns),
         createdAt: campaign.createdAt.toISOString(),
       },
     });

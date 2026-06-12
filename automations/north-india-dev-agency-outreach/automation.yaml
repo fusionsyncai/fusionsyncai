@@ -31,7 +31,7 @@ flow:
       id: email-1
       subject: A partnership idea for your agency
       messageType: static
-      content: Static HTML intro with {{firstName}}, {{company}}, {{personalizationHighlight}}
+      content: Static HTML intro with {{company}}, {{personalizationHighlight}}; tight implementation-partner positioning, ends on a reply-triggering question
     - type: wait
       id: wait-1
       delayAmount: 2
@@ -40,11 +40,13 @@ flow:
       id: email-2
       subject: Following up on a quick pilot idea
       messageType: static
-      content: Static HTML founder-to-founder follow-up
+      content: Static HTML founder-to-founder follow-up; simplified, reply-triggering question
 
 synced: true
-last_synced_at: 2026-06-07T08:48:12Z
+last_synced_at: 2026-06-12T13:53:13.093Z
 sync:
   source: recallsync
-  live_updated_at: 2026-06-07T08:48:12Z
-  last_pulled_at: 2026-06-07T08:48:12Z
+  live_updated_at: 2026-06-12T13:53:13.093Z
+  last_pulled_at: 2026-06-12T13:10:19.156Z
+changelog:
+  - "2026-06-12: HTML formatting pass on both static emails — wrapper LEFT-aligned (margin:0, was margin:0 auto), footer name 'Shubham' -> 'Shubham K' (Email 2 footer also given the 'Founder,' line for consistency). No em dashes. Pushed via update-automation; live updatedAt 2026-06-12T13:53:13.093Z."

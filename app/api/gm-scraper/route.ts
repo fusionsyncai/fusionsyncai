@@ -16,6 +16,7 @@ export async function POST(request: Request) {
     stageId?: unknown;
     autoProcess?: unknown;
     maxResults?: unknown;
+    region?: unknown;
   } | null;
 
   const query = typeof body?.query === "string" ? body.query.trim() : "";
@@ -38,6 +39,7 @@ export async function POST(request: Request) {
       autoProcess: body?.autoProcess === true,
       maxResults:
         typeof body?.maxResults === "number" ? body.maxResults : undefined,
+      region: typeof body?.region === "string" ? body.region : undefined,
     });
 
     return Response.json({ query: row }, { status: 201 });

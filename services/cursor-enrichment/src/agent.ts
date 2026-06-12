@@ -1,5 +1,6 @@
 import { spawn } from "node:child_process";
 import { getConfig } from "./config.js";
+import { logWarn } from "./logging.js";
 import {
   buildCustomSchema,
   enrichmentResultSchema,
@@ -232,11 +233,51 @@ function stripFences(value: string): string {
   return fenced?.[1]?.trim() ?? trimmed;
 }
 
+// The cursor-agent frequently narrates before/after the JSON it was asked for
+// (e.g. "Found it: info@x.com { ... }"). Pull out the first *balanced* JSON
+// object/array so a bit of surrounding prose doesn't fail the whole job.
+// Braces inside string literals are ignored so URLs/text can't throw off the
+// depth count.
+export function extractJsonCandidate(value: string): string {
+  const stripped = stripFences(value).trim();
+  if (stripped.startsWith("{") || stripped.startsWith("[")) return stripped;
+
+  const braceIdx = stripped.indexOf("{");
+  const bracketIdx = stripped.indexOf("[");
+  const candidates = [braceIdx, bracketIdx].filter((i) => i !== -1);
+  if (candidates.length === 0) return stripped;
+  const start = Math.min(...candidates);
+
+  const open = stripped[start];
+  const close = open === "{" ? "}" : "]";
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+
+  for (let i = start; i < stripped.length; i++) {
+    const ch = stripped[i];
+    if (inString) {
+      if (escaped) escaped = false;
+      else if (ch === "\\") escaped = true;
+      else if (ch === '"') inString = false;
+      continue;
+    }
+    if (ch === '"') inString = true;
+    else if (ch === open) depth++;
+    else if (ch === close) {
+      depth--;
+      if (depth === 0) return stripped.slice(start, i + 1);
+    }
+  }
+
+  return stripped.slice(start);
+}
+
 function parseEnrichment(
   reply: string,
   request: EnrichRequest,
 ): EnrichmentResult {
-  const parsed = JSON.parse(stripFences(reply)) as unknown;
+  const parsed = JSON.parse(extractJsonCandidate(reply)) as unknown;
   const result = enrichmentResultSchema.parse(parsed);
 
   // Validate the declared custom fields against a schema built from `outputs`.
@@ -268,6 +309,24 @@ export async function researchCompany(
       return parseEnrichment(result.reply, request);
     } catch (err) {
       lastError = err;
+      // The agent often replies with prose ("I found a ...") or a half-baked
+      // object instead of strict JSON. Log a redacted snippet of what it
+      // actually returned so we can see the real cause instead of just the
+      // opaque "Unexpected token" JSON.parse error.
+      const snippet = result.reply
+        .slice(0, 1000)
+        .replace(/\s+/g, " ")
+        .trim();
+      logWarn(
+        `[enrichment] parse failed for contact ${request.contactId} (attempt ${attempt}/2, exitCode ${result.exitCode}, replyLen ${result.reply.length}): ${
+          err instanceof Error ? err.message : String(err)
+        }`,
+      );
+      logWarn(
+        `[enrichment] raw agent reply (contact ${request.contactId}, attempt ${attempt}): ${
+          snippet || "<empty reply>"
+        }`,
+      );
     }
   }
 

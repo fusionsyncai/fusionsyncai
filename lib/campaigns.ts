@@ -11,6 +11,8 @@ type CreateCampaignInput = {
   name: string;
   description?: string | null;
   recallsyncCampaignId?: string | null;
+  mailboxes?: string[] | null;
+  contactColumns?: string[] | null;
 };
 
 // Creates a campaign together with its 1:1 pipeline (and default stages) in a
@@ -22,12 +24,16 @@ export async function createCampaignWithPipeline(input: CreateCampaignInput) {
         name: input.name,
         description: input.description ?? null,
         recallsyncCampaignId: input.recallsyncCampaignId ?? null,
+        mailboxes: input.mailboxes ?? undefined,
+        contactColumns: input.contactColumns ?? undefined,
       },
       select: {
         id: true,
         name: true,
         description: true,
         recallsyncCampaignId: true,
+        mailboxes: true,
+        contactColumns: true,
         createdAt: true,
       },
     });

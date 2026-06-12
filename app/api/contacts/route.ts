@@ -1,5 +1,7 @@
 import { EmailStatus, LeadQuality, Prisma } from "@/generated/prisma/client";
+import { assignCampaignMailbox } from "@/lib/mailboxes";
 import { addContactsToStage } from "@/lib/pipelines";
+import { normalizePhone, regionGeoDefaults } from "@/lib/phone";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -29,6 +31,12 @@ type ContactBody = {
   sourceUrl?: unknown;
   customData?: unknown;
   facebookUrl?: unknown;
+  country?: unknown;
+  timezone?: unknown;
+  city?: unknown;
+  state?: unknown;
+  /** ISO-3166 alpha-2; default phone region when country omitted (default IN). */
+  region?: unknown;
   campaignIds?: unknown;
   // Optional pipeline placement: when both are set, the new contact is placed
   // into this stage after creation (stage must belong to the pipeline).
@@ -38,17 +46,6 @@ type ContactBody = {
 
 function optionalString(value: unknown) {
   return typeof value === "string" && value.trim() ? value.trim() : null;
-}
-
-// Normalizes a phone to E.164-ish form: strips spaces/dashes/parens, then
-// ensures a leading "+" (numbers are assumed to already include the country
-// code, e.g. 917973151386 -> +917973151386). An existing leading "+" is kept.
-// Returns null when no usable phone is provided.
-function normalizePhone(value: unknown) {
-  if (typeof value !== "string") return null;
-  const cleaned = value.replace(/[\s()-]/g, "").trim();
-  if (!cleaned) return null;
-  return cleaned.startsWith("+") ? cleaned : `+${cleaned}`;
 }
 
 function optionalNumber(value: unknown) {
@@ -73,36 +70,57 @@ function jsonObject(value: unknown): Prisma.InputJsonObject | undefined {
   return value as Prisma.InputJsonObject;
 }
 
-export async function GET() {
-  const contacts = await prisma.contact.findMany({
-    orderBy: { createdAt: "desc" },
-    take: 100,
-    select: {
-      id: true,
-      name: true,
-      email: true,
-      emailStatus: true,
-      phone: true,
-      companyName: true,
-      companyWebsite: true,
-      companyDomain: true,
-      companyLocation: true,
-      quality: true,
-      score: true,
-      enrichmentStatus: true,
-      enrichedAt: true,
-      source: true,
-      sourceUrl: true,
-      customData: true,
-      createdAt: true,
-      _count: {
-        select: {
-          campaigns: true,
-          tags: true,
+const DEFAULT_PAGE_SIZE = 25;
+const MAX_PAGE_SIZE = 100;
+
+function parsePositiveInt(value: string | null, fallback: number) {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const page = parsePositiveInt(searchParams.get("page"), 1);
+  const pageSize = Math.min(
+    MAX_PAGE_SIZE,
+    parsePositiveInt(searchParams.get("pageSize"), DEFAULT_PAGE_SIZE),
+  );
+
+  const [total, contacts] = await Promise.all([
+    prisma.contact.count(),
+    prisma.contact.findMany({
+      orderBy: { createdAt: "desc" },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        emailStatus: true,
+        phone: true,
+        companyName: true,
+        companyWebsite: true,
+        companyDomain: true,
+        companyLocation: true,
+        quality: true,
+        score: true,
+        enrichmentStatus: true,
+        enrichedAt: true,
+        source: true,
+        sourceUrl: true,
+        customData: true,
+        createdAt: true,
+        _count: {
+          select: {
+            campaigns: true,
+            tags: true,
+          },
         },
       },
-    },
-  });
+    }),
+  ]);
+
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
   return Response.json({
     contacts: contacts.map((contact) => ({
@@ -110,6 +128,11 @@ export async function GET() {
       createdAt: contact.createdAt.toISOString(),
       enrichedAt: contact.enrichedAt?.toISOString() ?? null,
     })),
+    total,
+    page,
+    pageSize,
+    totalPages,
+    hasNextPage: page < totalPages,
   });
 }
 
@@ -117,7 +140,10 @@ export async function POST(request: Request) {
   const body = (await request.json().catch(() => null)) as ContactBody | null;
   const name = optionalString(body?.name);
   const email = optionalString(body?.email);
-  const phone = normalizePhone(body?.phone);
+  const region = optionalString(body?.region) ?? optionalString(body?.country);
+  const geo = regionGeoDefaults(region);
+  const phone =
+    normalizePhone(body?.phone, region) ?? optionalString(body?.phone);
   const companyWebsite = optionalString(body?.companyWebsite);
 
   if (!name) {
@@ -168,6 +194,10 @@ export async function POST(request: Request) {
     email,
     emailStatus: enumValue(body?.emailStatus, emailStatuses, EmailStatus.UNKNOWN),
     phone,
+    country: optionalString(body?.country) ?? geo.country,
+    timezone: optionalString(body?.timezone) ?? geo.timezone,
+    city: optionalString(body?.city),
+    state: optionalString(body?.state),
     linkedinUrl: optionalString(body?.linkedinUrl),
     companyName: optionalString(body?.companyName),
     companyWebsite,
@@ -243,6 +273,23 @@ export async function POST(request: Request) {
       },
     });
   });
+
+  // Assign a sticky, evenly-distributed sending mailbox per campaign the
+  // contact was just added to (no-op when the campaign has none configured).
+  // The assignment writes customData after the create above, so refresh the
+  // response copy when it changes anything.
+  for (const campaignId of campaignIds) {
+    await assignCampaignMailbox(campaignId, contact.id);
+  }
+  if (campaignIds.length > 0) {
+    const refreshed = await prisma.contact.findUnique({
+      where: { id: contact.id },
+      select: { customData: true },
+    });
+    if (refreshed) {
+      contact.customData = refreshed.customData;
+    }
+  }
 
   // Optional pipeline placement (after the contact + campaign links exist).
   // addContactsToStage validates the stage belongs to the pipeline and is a

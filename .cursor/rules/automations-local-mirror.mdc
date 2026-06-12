@@ -1,0 +1,69 @@
+---
+description: Keep automations/<slug> local files in sync with the live RecallSync automation
+globs: automations/**
+alwaysApply: false
+---
+
+# Automations — local mirror sync
+
+`automations/<slug>/` is the **AIOS local editing copy** of a RecallSync `Automation`. Live
+RecallSync is authoritative for what is **currently running**, but edits are authored **locally
+first** and only pushed to live after the user confirms. So the local files are allowed to be
+**ahead** of live mid-edit; they must never be **behind** live (always pull newer live state before
+editing).
+
+Each automation folder holds:
+
+- `automation.yaml` — link + metadata mirror (`id`, `name`, `description`, `status`,
+  `primaryAgentId`, a human-readable `flow.steps` summary, and a `sync` block).
+- `automation-flow.json` — the React-Flow cadence (`{ nodes, edges }`), the exact `flow` payload.
+
+## Update workflow (REQUIRED order)
+
+When the user asks to **update / edit / change an automation**, follow this exact sequence. Do
+**not** call `update-automation` (push) until the user explicitly confirms.
+
+1. **Sync first (pull-only).** Before editing, call `get-automation` and compare the live
+   `updatedAt` against the local `automation.yaml` `sync.live_updated_at`:
+   - **Live is ahead** (live `updatedAt` is newer): pull — rewrite `automation-flow.json` to match
+     the live `flow` exactly and refresh `automation.yaml` (`status`, `flow.steps`, `sync` block).
+     Tell the user you pulled newer live changes before editing.
+   - **Live is in sync or behind** (live `updatedAt` equals or is older than the recorded value):
+     do **not** pull and do **not** push. The local files are the working copy; leave them as-is and
+     proceed to edit.
+2. **Edit locally only.** Make all requested changes in `automation-flow.json` (and the
+   `automation.yaml` summary). Do not touch the live automation yet. Let the user review the local
+   diff.
+3. **Confirm, then push.** Only after the user explicitly confirms, push the local
+   `automation-flow.json` to live via `update-automation`. Then update `automation.yaml`'s `sync`
+   block to the live `updatedAt` returned by the push.
+
+Never push edits to live without an explicit confirmation in this turn or workflow.
+
+## Rules
+
+- **Never push without explicit confirmation.** All editing happens in the local files first; the
+  live automation is only changed via `update-automation` after the user says to push.
+- **Pull only when live is ahead.** If live `updatedAt` is newer than the local
+  `sync.live_updated_at`, overwrite the local files to match live before editing. If live is in sync
+  or behind, do not pull (the local working copy may legitimately be ahead).
+- `automation-flow.json` must be a valid `flow` payload (nodes + edges), including node `id`s,
+  `position`s, `data`, and edges. Keep email nodes' `messageType` **and** `emailType` set to the
+  same value.
+- Strip transient builder-only UI props (`selected`, `dragging`) from the committed
+  `automation-flow.json` — they are not meaningful state.
+- When you **pull** (live ahead) or after you **push** (confirmed), update `automation.yaml`:
+  - `status` to match live.
+  - `flow.steps` summary (subjects / content notes) to match the cadence.
+  - the `sync` block: set `last_synced_at`, `sync.live_updated_at`, and `sync.last_pulled_at` to the
+    live `updatedAt` from the MCP response, and `synced: true`.
+- While there are local edits that haven't been pushed, you may set `synced: false` so the drift is
+  visible until the user confirms the push.
+- All RecallSync reads/writes go through **MCP only** (see `recallsync-mcp-only`). Never hit REST.
+- New automation? Copy `automations/_template/automation.yaml` into a new `<slug>/` folder.
+
+## Reference
+
+- Overview: `automations/README.md`
+- SOP: `sops/automation/configure-automation.md`
+- MCP tools: `get-automation`, `update-automation`, `get-automations`, `create-automation`

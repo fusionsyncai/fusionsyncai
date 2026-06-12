@@ -1,84 +1,137 @@
 {
+  "edges": [
+    {
+      "id": "edge-trigger-1-wait-1780666990569-1780666994368",
+      "type": "deletable",
+      "style": {
+        "stroke": "#6366f1",
+        "strokeWidth": 2
+      },
+      "source": "trigger-1",
+      "target": "wait-1780666990569",
+      "animated": true
+    },
+    {
+      "id": "edge-wait-1780666990569-email-1-1780667000687",
+      "type": "deletable",
+      "style": {
+        "stroke": "#6366f1",
+        "strokeWidth": 2
+      },
+      "source": "wait-1780666990569",
+      "target": "email-1",
+      "animated": true
+    },
+    {
+      "id": "edge-email1-wait1",
+      "type": "deletable",
+      "source": "email-1",
+      "target": "wait-1"
+    },
+    {
+      "id": "edge-wait1-email2",
+      "type": "deletable",
+      "source": "wait-1",
+      "target": "email-2"
+    }
+  ],
   "nodes": [
     {
       "id": "trigger-1",
+      "data": {
+        "label": "Automation Trigger"
+      },
       "type": "trigger",
-      "position": { "x": -757.275810520624, "y": 173.39038876182815 },
+      "measured": {
+        "width": 350,
+        "height": 203
+      },
+      "position": {
+        "x": -757.275810520624,
+        "y": 173.39038876182815
+      },
       "deletable": false,
-      "selectable": false,
-      "data": { "label": "Automation Trigger" }
+      "selectable": false
     },
     {
       "id": "wait-1780666990569",
-      "type": "wait",
-      "position": { "x": -305.625, "y": 186.875 },
       "data": {
         "label": "Wait",
-        "description": "Add a delay before next action",
-        "delayAmount": 10,
+        "status": "initial",
         "delayUnit": "second",
-        "status": "initial"
+        "delayAmount": 10,
+        "description": "Add a delay before next action"
+      },
+      "type": "wait",
+      "measured": {
+        "width": 300,
+        "height": 167
+      },
+      "position": {
+        "x": -305.625,
+        "y": 186.875
       }
     },
     {
       "id": "email-1",
-      "type": "email",
-      "position": { "x": 99.6906043768953, "y": 181.49308853311896 },
       "data": {
         "label": "Email 1 - Intro",
-        "description": "Static intro email (HTML) with {{firstName}}, {{company}}, {{personalizationHighlight}}",
-        "emailSubject": "A partnership idea for your agency",
-        "messageContent": "<div style=\"max-width:480px;margin:0 auto;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.6;color:#1a1a1a;\"><p>Hey {{firstName}},</p><p>Came across {{company}} and was going through some of your work, {{personalizationHighlight}}.</p><p>Made me think there could actually be some overlap.</p><p>I run FusionSync AI, a small technical systems company. We mostly build the implementation-heavy side of things:</p><ul><li>CRM systems and automation</li><li>AI workflows and voice systems</li><li>APIs and internal tools</li><li>Operational and business workflows</li></ul><p>A lot of agencies are great at product engineering and design but increasingly get pulled into requests around AI, automation, CRM workflows, smarter lead handling, and internal tooling. Building that capability in-house rarely makes sense.</p><p>So figured I'd introduce myself. If there's ever overlap where your team wants an extra technical layer for implementation-heavy work, happy to collaborate quietly behind the scenes.</p><p>Happy to share a short service menu and, if useful, put together a quick custom demo around something your team or clients are exploring.</p><p>Shubham<br/>Founder, <a href=\"https://www.google.com/search?q=fusionsyncai\">FusionSync AI</a></p></div>",
-        "messageType": "static",
+        "status": "initial",
         "emailType": "static",
-        "status": "initial"
+        "description": "Static intro email (HTML) with {{company}}, {{personalizationHighlight}}. Tight technical-implementation-partner positioning, ends on a reply-triggering question.",
+        "messageType": "static",
+        "emailSubject": "A partnership idea for your agency",
+        "messageContent": "<div style=\"max-width:480px;margin:0;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.6;color:#1a1a1a;\"><p>Hey team,</p><p>Came across {{company}} and was going through some of your work.</p><p>{{personalizationHighlight}}.</p><p>I run FusionSync AI, a small technical systems company focused on the implementation-heavy side of things like AI workflows, CRM automation, voice systems, and internal tooling.</p><p>A lot of agencies end up getting requests around automation, smarter lead handling, or AI features but don't necessarily want to build that capability in-house.</p><p>So figured I'd introduce myself. If there's ever overlap where an extra technical layer would help, happy to collaborate quietly behind the scenes.</p><p>Out of curiosity, do you currently get requests around AI automation or CRM workflow work from clients?</p><p>Shubham K<br/>Founder, <a href=\"https://www.google.com/search?q=fusionsyncai\">FusionSync AI</a></p></div>"
+      },
+      "type": "email",
+      "measured": {
+        "width": 500,
+        "height": 323
+      },
+      "position": {
+        "x": 117.1906043768953,
+        "y": 395.24308853311896
       }
     },
     {
       "id": "wait-1",
-      "type": "wait",
-      "position": { "x": 786.7807775236564, "y": 259.4865011435461 },
       "data": {
         "label": "Wait 2 days",
-        "description": "Pause before the follow-up email",
-        "delayAmount": 2,
+        "status": "initial",
         "delayUnit": "day",
-        "status": "initial"
+        "delayAmount": 2,
+        "description": "Pause before the follow-up email"
+      },
+      "type": "wait",
+      "measured": {
+        "width": 300,
+        "height": 167
+      },
+      "position": {
+        "x": 786.7807775236564,
+        "y": 259.4865011435461
       }
     },
     {
       "id": "email-2",
-      "type": "email",
-      "position": { "x": 1357.541792878594, "y": 197.3561555047313 },
       "data": {
         "label": "Email 2 - Follow-up",
-        "description": "Static founder-to-founder follow-up (HTML, sent 2 days after Email 1 if no reply)",
-        "emailSubject": "Following up on a quick pilot idea",
-        "messageContent": "<div style=\"max-width:480px;margin:0 auto;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.6;color:#1a1a1a;\"><p>Hey,</p><p>Floating this back up, founder inboxes are brutal, I get it.</p><p>Quick version: I'm a solo founder running FusionSync AI, and I work as a technical growth partner for agencies like yours, handling marketing, AI services implementation, and client management so you can take on more without staffing up.</p><p>If it's worth exploring, I'd start with a small, low-commitment pilot: one real project for you or a client, just to prove the work. No pressure either way.</p><p>Shubham<br/><a href=\"https://www.google.com/search?q=fusionsyncai\">FusionSync AI</a></p></div>",
-        "messageType": "static",
+        "status": "initial",
         "emailType": "static",
-        "status": "initial"
+        "description": "Static founder-to-founder follow-up (HTML, sent 2 days after Email 1 if no reply). Simplified, reply-triggering question, tight implementation positioning.",
+        "messageType": "static",
+        "emailSubject": "Following up on a quick pilot idea",
+        "messageContent": "<div style=\"max-width:480px;margin:0;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.6;color:#1a1a1a;\"><p>Hey,</p><p>Just floating this back up in case it got buried.</p><p>Curious whether your team currently gets requests around AI automation, CRM workflows, or smarter lead handling from clients?</p><p>If yes, happy to explore helping quietly on the implementation side when useful, even starting small.</p><p>Shubham K<br/>Founder, <a href=\"https://www.google.com/search?q=fusionsyncai\">FusionSync AI</a></p></div>"
+      },
+      "type": "email",
+      "measured": {
+        "width": 500,
+        "height": 291
+      },
+      "position": {
+        "x": 1373.791792878594,
+        "y": 429.8561555047313
       }
     }
-  ],
-  "edges": [
-    {
-      "id": "edge-trigger-1-wait-1780666990569-1780666994368",
-      "source": "trigger-1",
-      "target": "wait-1780666990569",
-      "type": "deletable",
-      "animated": true,
-      "style": { "stroke": "#6366f1", "strokeWidth": 2 }
-    },
-    {
-      "id": "edge-wait-1780666990569-email-1-1780667000687",
-      "source": "wait-1780666990569",
-      "target": "email-1",
-      "type": "deletable",
-      "animated": true,
-      "style": { "stroke": "#6366f1", "strokeWidth": 2 }
-    },
-    { "id": "edge-email1-wait1", "source": "email-1", "target": "wait-1", "type": "deletable" },
-    { "id": "edge-wait1-email2", "source": "wait-1", "target": "email-2", "type": "deletable" }
   ]
 }

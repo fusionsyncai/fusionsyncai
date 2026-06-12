@@ -71,7 +71,7 @@ async function claimNextGmScraperQuery() {
 async function settleQuery(
   id: string,
   data: {
-    status: GmScraperStatus.DONE | GmScraperStatus.FAILED;
+    status: typeof GmScraperStatus.DONE | typeof GmScraperStatus.FAILED;
     resultCount?: number;
     lastError?: string | null;
   },
@@ -168,6 +168,7 @@ async function executeGmScraperQuery(
       pipelineId: row.autoProcess ? pipelineId : null,
       stageId: row.autoProcess ? stageId : null,
       gmScraperQueryId: row.id,
+      region: row.region,
     });
 
     await settleQuery(row.id, {

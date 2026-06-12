@@ -207,6 +207,13 @@ export async function POST(
     const firmographics = enrichment?.firmographics;
     customFields = sanitizeCustomFields(enrichment?.custom);
 
+    // companyShortName is a declared enrichment output but also a first-class
+    // Contact column — promote it from the custom payload into the column (it
+    // still stays in customData via customFields for templating compatibility).
+    // It's the everyday display name (e.g. "JSR Solutions"), not an acronym.
+    const shortName = optionalString(customFields.companyShortName);
+    if (shortName) data.companyShortName = shortName;
+
     // Firmographics are best-effort; the deliverable may be custom fields. But
     // an ENRICHED callback with neither is empty — reject it.
     if (!firmographics && Object.keys(customFields).length === 0) {

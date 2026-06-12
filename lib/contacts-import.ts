@@ -1,4 +1,10 @@
 import { EmailStatus, LeadQuality, Prisma } from "@/generated/prisma/client";
+import { assignCampaignMailbox } from "@/lib/mailboxes";
+import {
+  normalizePhone,
+  phoneLookupVariants,
+  regionGeoDefaults,
+} from "@/lib/phone";
 import { addContactsToStage } from "@/lib/pipelines";
 import { prisma } from "@/lib/prisma";
 
@@ -29,6 +35,9 @@ export type ImportContactsInput = {
   stageId?: string | null;
   /** When set, links newly created contacts to this GM Scraper query. */
   gmScraperQueryId?: string | null;
+  // Default phone region (ISO-3166 alpha-2) for normalizing locally-written
+  // numbers and seeding contact country/timezone. Defaults to IN in lib/phone.
+  region?: string | null;
 };
 
 export type ImportContactsResult = {
@@ -45,29 +54,6 @@ function optionalString(value: string | null | undefined) {
   return trimmed ? trimmed : null;
 }
 
-/** Canonical phone for storage + dedup (digits only; India → last 10). */
-export function normalizePhone(
-  phone: string | null | undefined,
-): string | null {
-  if (!phone?.trim()) return null;
-  const digits = phone.replace(/\D/g, "");
-  if (digits.length < 7) return null;
-  if (digits.length === 12 && digits.startsWith("91")) return digits.slice(2);
-  if (digits.length === 11 && digits.startsWith("0")) return digits.slice(1);
-  if (digits.length === 10) return digits;
-  if (digits.length > 10) return digits.slice(-10);
-  return digits;
-}
-
-function phoneLookupVariants(normalized: string): string[] {
-  return [
-    normalized,
-    `+91${normalized}`,
-    `91${normalized}`,
-    `0${normalized}`,
-  ];
-}
-
 export function parseCompanyDomain(
   website: string | null | undefined,
 ): string | null {
@@ -82,10 +68,14 @@ export function parseCompanyDomain(
   }
 }
 
-function buildContactData(row: ImportContactRow): Prisma.ContactCreateInput {
+function buildContactData(
+  row: ImportContactRow,
+  region?: string | null,
+): Prisma.ContactCreateInput {
   const website = optionalString(row.companyWebsite);
   const companyDomain =
     optionalString(row.companyDomain) ?? parseCompanyDomain(website);
+  const geo = regionGeoDefaults(region);
 
   return {
     name: row.name.trim(),
@@ -94,7 +84,9 @@ function buildContactData(row: ImportContactRow): Prisma.ContactCreateInput {
     title: optionalString(row.title),
     email: optionalString(row.email),
     emailStatus: EmailStatus.UNKNOWN,
-    phone: normalizePhone(row.phone) ?? optionalString(row.phone),
+    phone: normalizePhone(row.phone, region) ?? optionalString(row.phone),
+    country: geo.country,
+    timezone: geo.timezone,
     linkedinUrl: optionalString(row.linkedinUrl),
     companyName: optionalString(row.companyName),
     companyWebsite: website,
@@ -117,14 +109,15 @@ async function findExistingContact(
   email: string | null,
   phone: string | null,
   companyDomain: string | null,
+  region?: string | null,
 ) {
   const or: Prisma.ContactWhereInput["OR"] = [];
   if (email) or.push({ email });
   if (companyDomain) or.push({ companyDomain });
 
-  const normalizedPhone = normalizePhone(phone);
+  const normalizedPhone = normalizePhone(phone, region);
   if (normalizedPhone) {
-    for (const variant of phoneLookupVariants(normalizedPhone)) {
+    for (const variant of phoneLookupVariants(normalizedPhone, region)) {
       or.push({ phone: variant });
     }
   } else if (phone) {
@@ -159,6 +152,9 @@ async function attachCampaign(contactId: string, campaignId: string) {
     create: { campaignId, contactId },
     update: {},
   });
+  // Assign a sticky, evenly-distributed sending mailbox (no-op if the campaign
+  // has none configured).
+  await assignCampaignMailbox(campaignId, contactId);
 }
 
 export async function importContacts(
@@ -217,7 +213,7 @@ export async function importContacts(
       continue;
     }
 
-    const data = buildContactData(row);
+    const data = buildContactData(row, input.region);
     const email = data.email ?? null;
     const phone = data.phone ?? null;
     const companyDomain = data.companyDomain ?? null;
@@ -237,6 +233,7 @@ export async function importContacts(
         email,
         phone,
         companyDomain,
+        input.region,
       );
       if (existing) {
         result.skipped++;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Trash2 } from "lucide-react";
 
@@ -49,7 +49,14 @@ type Contact = {
 
 type ContactsResponse = {
   contacts: Contact[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+  hasNextPage: boolean;
 };
+
+const PAGE_SIZE = 25;
 
 type PendingDelete =
   | { type: "single"; id: string; name: string }
@@ -86,24 +93,38 @@ export default function ContactsPage() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [pendingDelete, setPendingDelete] = useState<PendingDelete | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [total, setTotal] = useState(0);
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (targetPage: number) => {
     try {
-      setError(null);
-      const response = await fetch("/api/contacts", { cache: "no-store" });
+      const response = await fetch(
+        `/api/contacts?page=${targetPage}&pageSize=${PAGE_SIZE}`,
+        { cache: "no-store" },
+      );
 
       if (!response.ok) {
         throw new Error("Failed to load contacts");
       }
 
       const data = (await response.json()) as ContactsResponse;
+      setError(null);
       setContacts(data.contacts);
+      setTotal(data.total);
+      setTotalPages(data.totalPages);
+      setPage(data.page);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
       setIsLoading(false);
     }
   }, []);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void refresh(page);
+  }, [refresh, page]);
 
   const selectedContactIds = useMemo(() => {
     const ids = new Set(contacts.map((contact) => contact.id));
@@ -164,9 +185,15 @@ export default function ContactsPage() {
         }
       }
 
+      const deletedCount =
+        pendingDelete.type === "single" ? 1 : pendingDelete.ids.length;
+      // If we just emptied the current page, step back one (but never below 1).
+      const nextPage =
+        page > 1 && deletedCount >= contacts.length ? page - 1 : page;
+
       setSelected(new Set());
       setPendingDelete(null);
-      await refresh();
+      await refresh(nextPage);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Delete failed");
     } finally {
@@ -184,8 +211,8 @@ export default function ContactsPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <AddContactDialog onCreated={() => void refresh()} />
-          <ImportContactsDialog onImported={() => void refresh()} />
+          <AddContactDialog onCreated={() => void refresh(1)} />
+          <ImportContactsDialog onImported={() => void refresh(1)} />
         </div>
       </div>
 
@@ -324,6 +351,36 @@ export default function ContactsPage() {
           </Table>
         )}
       </div>
+
+      {!isLoading && !error && total > 0 ? (
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-muted-foreground">
+            {(page - 1) * PAGE_SIZE + 1}–{(page - 1) * PAGE_SIZE + contacts.length}{" "}
+            of {total}
+          </p>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={page <= 1 || isLoading}
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+            >
+              Previous
+            </Button>
+            <span className="text-sm text-muted-foreground">
+              Page {page} of {totalPages}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={page >= totalPages || isLoading}
+              onClick={() => setPage((p) => p + 1)}
+            >
+              Next
+            </Button>
+          </div>
+        </div>
+      ) : null}
 
       <AlertDialog
         open={pendingDelete !== null}
