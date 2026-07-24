@@ -59,10 +59,11 @@ Example action body:
     "companyWebsite": "{{contact.companyWebsite}}",
     "companyDomain": "{{contact.companyDomain}}"
   },
-  "instructions": "Partnership outreach to North Indian dev agencies serving US clients. Write one specific, genuine opening sentence grounded in a real fact.",
+  "instructions": "Agency owner with paying clients in a vertical and a tech/fulfilment gap. Write one specific opening line grounded in their vertical and what clients are asking for. Tone: peer operator, not salesy. CTA path is WhatsApp partnership conversation when ready.",
   "outputs": [
-    { "key": "personalizedHighlight", "type": "string", "required": true, "description": "One specific opening sentence for a cold email." },
-    { "key": "personalizationHighlight", "type": "string", "required": true, "description": "Exact mirror of personalizedHighlight." }
+    { "key": "personalizedHighlight", "type": "string", "required": true, "description": "One specific opening sentence for first touch." },
+    { "key": "vertical", "type": "string", "required": false, "description": "Vertical they serve (dental, real estate, creator, etc.)." },
+    { "key": "techGap", "type": "string", "required": false, "description": "Concrete tech/fulfilment gap their clients are creating." }
   ],
   "callbackUrl": "http://localhost:3010/api/contacts/{{contact.id}}/enrichment"
 }

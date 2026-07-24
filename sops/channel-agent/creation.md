@@ -32,7 +32,7 @@ A primary agent exists and needs a worker for a specific channel (EMAIL, SMS, WH
 | `agentMode` | **ask** | `AUTO` | Human-in-the-loop mode — **must be confirmed with the owner**: `AUTO` (replies send automatically) or `DRAFT` (replies held for human approve/reject). See "Agent mode" below. |
 | `type` | no | `INTEGRATED` | Agent type (`INTEGRATED` / `N8N` / `VAPI` / ...) |
 | `isActive` | no | `false` | Created **paused** by default; activated explicitly later |
-| `prompt` | no | seeded | STANDARD: defaults to `"You are a helpful agent."` if empty. FLOW: top-level prompt stays empty (prompt lives in the flow). Authored in the repo and synced later. |
+| `prompt` | no | seeded | STANDARD: defaults to `"You are a helpful agent."` if empty. FLOW: top-level prompt stays empty (prompt lives in the flow). Authored live via MCP/CLI after creation. |
 | `n8nWorkflowId` | conditional | — | **Required when `provider = N8N`.** Pick from `list-n8n-workflows`; validated against the business N8N config |
 
 ## Builder type rule (always ask)
@@ -108,14 +108,11 @@ a required "N8N Workflow" dropdown whenever the provider is N8N).
 7. Run `create-channel-agent` with at least `primaryAgentId`, `name`, `channel`, `provider`,
    `baseAgentType`, `agentMode` (+ `n8nWorkflowId` for N8N). Created paused (`isActive: false`) with empty prompt.
    To change mode later: `update-channel-agent` with `{ id, agentMode: "AUTO" | "DRAFT" }`.
-8. Mirror it in the AIOS repo: add the channel folder
-   (`agents/primary-agent/<primary-agent-name>/<channel>/`) with `channel-agent.yaml` +
-   `channel-agent-prompt.md`, and write the returned `baseAgent.id` back. Commit.
-9. Author behavior:
-   - **STANDARD** → `channel-agent-prompt.md`, sync via `prompting-standard.md`.
-   - **FLOW** → `channel-agent-flow.json` (exported bundle), sync via `prompting-flow.md`.
-10. Test the agent with `sops/channel-agent/testing.md`.
-11. After owner approval, activate with `update-channel-agent` using `{ id, isActive: true }`.
+8. Author behavior live on RecallSync:
+   - **STANDARD** → `update-channel-agent` with `prompt` (see `prompting-standard.md`).
+   - **FLOW** → `set-channel-agent-flow-draft` (see `prompting-flow.md`).
+9. Test the agent with `sops/channel-agent/testing.md`.
+10. After owner approval, activate with `update-channel-agent` using `{ id, isActive: true }`.
 
 ## Human-in-the-loop
 Owner confirms channel + provider + builder type + agent mode (steps 2–4) and prompt before activation.
@@ -126,14 +123,12 @@ provisioning approval.
 ## Output
 - A live `BaseAgent` on RecallSync, attached to the primary. It is created paused and only
   activated after testing/approval.
-- A committed AIOS channel-agent folder linked by `baseAgent.id`.
 
 ## Done criteria
 - [ ] Builder type (Standard vs Flow) confirmed with owner
 - [ ] Agent mode (Auto vs Draft / human-in-the-loop) confirmed with owner
 - [ ] Provider connectivity verified via `list-integrations`
 - [ ] `create-channel-agent` succeeded; id captured
-- [ ] AIOS channel-agent folder created at `agents/primary-agent/<name>/<channel>/` and id committed back
-- [ ] Prompt authored (and later synced) before activation
+- [ ] Prompt or flow authored and pushed live before activation
 - [ ] Agent tested and owner approved activation
 - [ ] `update-channel-agent` set `isActive: true`

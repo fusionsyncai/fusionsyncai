@@ -1,0 +1,62 @@
+---
+description: RecallSync ops — use recallsync CLI first (MCP fallback)
+alwaysApply: true
+---
+
+# RecallSync — CLI first
+
+For RecallSync reads/writes (leads, campaigns, agents, conversations, etc.), **use the
+`recallsync` CLI via Shell** — not raw REST, not Prisma.
+
+## Run from AIOS repo root
+
+```bash
+node scripts/recallsync-cli.mjs --json leads list --page-size 10
+node scripts/recallsync-cli.mjs campaign leads --id <campaignId>
+node scripts/recallsync-cli.mjs conversation messages --id <conversationId>
+```
+
+The wrapper loads `.env` / `.env.local` and maps `RECALL_API_KEY` → `RECALLSYNC_API_KEY`.
+**Set `RECALLSYNC_BASE_URL` in `.env.local`** to your hosted RecallSync domain (same URL
+you export in terminal). If unset, it defaults to `http://localhost:3000/api/rest` — that
+only works when `recallsync-app` is running locally on port 3000.
+
+```bash
+# .env.local (fusionsyncai repo)
+RECALL_API_KEY=your_key
+RECALLSYNC_BASE_URL=https://<your-agency-domain>/api/rest
+```
+
+Always pass **`--json`** so output is parseable.
+
+## MCP tool → CLI map (common)
+
+| MCP tool | CLI |
+|----------|-----|
+| `get-leads` | `leads list` |
+| `get-lead` | `leads get --id` |
+| `create-lead` | `leads create --name ... --body '{...}'` |
+| `find-lead` | `leads find --email ...` |
+| `get-all-campaigns` | `campaign list` |
+| `get-campaign-leads` | `campaign leads --id` |
+| `get-conversation-messages` | `conversation messages --id` |
+| `create-conversation-message` | `conversation create-message --body '{...}'` |
+
+Full command list: `recallsync --help`
+
+## Do
+
+- Prefer CLI when MCP hangs, times out, or is unavailable.
+- Use `--json` on every command for agent sessions.
+- If a command is missing, add it in `recallsync-cli` (recall repo) or fall back to MCP.
+
+## Don't
+
+- **Never** `curl` / `fetch` / `axios` to `*/api/rest/*` directly.
+- **Never** hardcode bearer tokens in commands — the wrapper reads `.env.local`.
+- **Never** use Prisma against RecallSync DB from AIOS.
+
+## Fallback
+
+If `recallsync` is not on PATH (`command not found`), use MCP tools
+(`project-0-fusionsyncai-recallsync-primary`). See `recallsync-mcp-run`.

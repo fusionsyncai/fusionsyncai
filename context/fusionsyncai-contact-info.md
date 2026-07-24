@@ -83,33 +83,36 @@ https://www.linkedin.com/company/fusionsyncai
 
 ## Business Positioning (Short Summary)
 
-FusionSync AI is an implementation-first AI systems company focused on:
+FusionSync AI is a **white-label tech partner for agency owners**.
 
-- CRM automation
-- Voice AI systems
-- AI lead qualification
-- Multi-channel workflows
-- WhatsApp & Instagram automation
-- Operational tooling
-- n8n workflows
-- API integrations
-- Custom business systems
+- Agency owners with paying clients in a vertical who need software they cannot deliver in-house
+- White-label product, local integrations (GHL, n8n, CRM bridges), white-glove per-client implementation
+- Phased partnership: stack first (~5 clients) → production vertical software → ownership milestones
+- You stay the face; FusionSync stays invisible
 
 Primary positioning today:
-**Inbound operating systems + AI implementation for event companies and inbound-heavy businesses.**
+**Your clients need software. You keep the relationship. We build and deliver.**
 
-Expanded capability:
-**AI systems, CRM orchestration, operational software, and implementation-heavy automation.**
+Website: https://www.fusionsync.ai/
+Video: *White-Glove Tech Partner — Part 1* (homepage hero)
 
 ---
 
 ## Primary CTA / Offer
 
-### Free AI Audit
-Operational bottleneck review and automation opportunity assessment.
+### Main conversion path
+**Message on WhatsApp** — partnership fit conversation (vertical, client count, tech gap).
 
-### Free 7-Day Production Pilot
-Live deployment for qualified businesses to validate results before long-term implementation.
+- WhatsApp: +91 79731 51386 — https://wa.me/+917973151386
+
+### Credibility signal (secondary)
+Top Rated Plus on Upwork, 35+ deliveries — mention briefly when trust matters, not as primary CTA.
+
+- Freelancer: https://www.upwork.com/freelancers/shubhamkashyap
+- Agency: https://www.upwork.com/agencies/1824319881634787328
+
+### Typical engagement
+Partner engagements typically **$20k+** — scope depends on vertical, client count, and phase.
 
 ---
 
@@ -117,17 +120,18 @@ Live deployment for qualified businesses to validate results before long-term im
 
 Preferred company positioning in outreach:
 
-**FusionSync AI = technical systems implementation partner**
+**FusionSync = invisible white-label tech partner for agency owners with vertical client demand**
 
 Avoid positioning as:
+- solo-founder prototype fixer (Lovable/Base44 shop)
 - chatbot agency
-- generic automation agency
-- outsourcing company
-- freelancer shop
+- generic outsourcing / body shop
+- cold pitch to strangers with no client base
 
 Preferred framing:
-- backend growth partner
-- AI systems partner
-- implementation partner
-- technical execution partner
-- operational systems company
+- white-label fulfilment partner
+- GHL/n8n stack → production vertical software
+- operator-to-operator partnership
+- Shubham leads every partnership
+
+Default CTA in copy: **WhatsApp** for a partnership conversation; **Upwork** for credibility only.

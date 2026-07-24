@@ -9,7 +9,7 @@
 // tool. Plaintext tokens are never printed.
 //
 // Usage:
-//   node scripts/reconcile-flow.mjs --flow agents/primary-agent/<name>/<channel>/channel-agent-flow.json
+//   node scripts/reconcile-flow.mjs --flow /tmp/exported-flow.json
 //   node scripts/reconcile-flow.mjs --flow <path> --out /tmp/flow.json
 import fs from 'node:fs';
 import path from 'node:path';

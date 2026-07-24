@@ -4,14 +4,14 @@ title: Create a new agent
 status: draft
 owner: vishal
 created: 2026-06-04
-updated: 2026-06-04
+updated: 2026-07-01
 ---
 
 # SOP: Create a new agent
 
 ## Purpose
-Define a new agent in the AIOS brain and provision it on RecallSync. Agents follow RecallSync's
-shape: a **primary agent** (wrapper) with one or more **channel agents** under it.
+Provision a new **primary agent** and its **channel agents** on RecallSync. Agent config lives
+**only in RecallSync** (MCP or CLI) — not in this repo.
 
 ## Trigger
 A new business need requires an agent that does not yet exist.
@@ -29,25 +29,23 @@ A new business need requires an agent that does not yet exist.
 ## Steps
 
 ### A. Primary agent (wrapper)
-1. Copy `agents/_template/` into `agents/primary-agent/<primary-agent-name>/`.
-2. Fill `primary-agent.yaml`: `name`, `type`, `goal`, `goalCompleteCriteria`, `stopScenario`,
-   and calendar reference if used. Leave `primaryAgent.id` blank until created.
+1. Confirm name and goal with the owner.
+2. Run `create-primary-agent` (MCP) or `primary-agent create` (CLI) with at least `name`.
+3. Capture the returned `id`.
 
 ### B. Channel agent(s) — see `sops/channel-agent/creation.md` for full detail
-3. Under the primary folder, copy `_channel/` to `<channel>/` (e.g. `email`), so the path is
-   `agents/primary-agent/<primary-agent-name>/<channel>/`.
-4. Fill `channel-agent.yaml`: `name`, `channel`, `provider`, `baseAgentType`, `agentMode`. Leave
-   `agent.id` blank until created.
-5. Write the behavior in `channel-agent-prompt.md` (role, context, responsibilities, output, guardrails).
-6. Add the channel to the `channelAgents` index in `primary-agent.yaml`.
+4. For each channel, run `create-channel-agent` with `primaryAgentId`, `name`, `channel`,
+   `provider`, `baseAgentType`, `agentMode`.
+5. Capture each returned `baseAgent.id`.
 
-### C. Review & provision
-7. Review prompts against `/context` for positioning and tone.
-8. **[Human review]** Owner approves `primary-agent.yaml` + each `channel-agent-prompt.md` before provisioning.
-9. Provision on RecallSync via MCP: create the PrimaryAgent first (`create-primary-agent`), then each
-   channel agent (`create-channel-agent`), then sync prompts (`update-channel-agent` with `prompt`).
-10. Write the returned ids back: `primaryAgent.id` and each `baseAgent.id`. Set `synced: true` and
-    `last_synced_at`. Commit.
+### C. Author behavior & activate
+6. Review positioning against `/context` for tone and offers.
+7. **[Human review]** Owner approves behavior before activation.
+8. Author and push behavior live:
+   - **STANDARD** → `update-channel-agent` with `prompt` (see `prompting-standard.md`).
+   - **FLOW** → `set-channel-agent-flow-draft` (see `prompting-flow.md`).
+9. Test per `testing.md`.
+10. Activate with `update-channel-agent` `{ id, isActive: true }` after approval.
 
 ## Agent mode (human-in-the-loop)
 Each channel agent has an `agentMode` (`AUTO` default, or `DRAFT`) — **always confirm it with the
@@ -61,15 +59,17 @@ Full detail and the exact question to ask the owner live in `sops/channel-agent/
 ("Agent mode — human-in-the-loop").
 
 ## Human-in-the-loop
-Step 8 (approval before provisioning) is mandatory. Separately, `agentMode: DRAFT` keeps a human in
+Step 7 (approval before activation) is mandatory. Separately, `agentMode: DRAFT` keeps a human in
 the loop on every outbound reply at runtime.
 
 ## Output
-- A committed `agents/primary-agent/<primary-agent-name>/` folder (primary + channel agents + prompts).
-- Live PrimaryAgent + channel agents (BaseAgents) on RecallSync, linked by id.
+- Live PrimaryAgent + channel agents (BaseAgents) on RecallSync, with ids noted in the session or
+  task tracker (not committed to `agents/`).
 
 ## Done criteria
-- [ ] Primary agent folder created and filled
-- [ ] Channel agent(s) created with `channel-agent-prompt.md`
-- [ ] Prompts reviewed and approved
-- [ ] Provisioned on RecallSync and ids committed back
+- [ ] Primary agent created on RecallSync; id captured
+- [ ] Channel agent(s) created; ids captured
+- [ ] Behavior authored and pushed live (prompt or flow)
+- [ ] Prompts/flows reviewed and approved
+- [ ] Tested via `test-channel-agent`
+- [ ] `update-channel-agent` set `isActive: true` after approval

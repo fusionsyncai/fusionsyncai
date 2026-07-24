@@ -38,33 +38,29 @@ Prompt authoring is an **iterative back-and-forth**. We lock each of these befor
 
 ## Process
 1. **Read `/context`.**
-2. Identify the agent: get `baseAgentId` + channel (`get-primary-agents`), confirm `baseAgentType = STANDARD`.
-3. **Pull latest first (mandatory).** Run pull-before-edit per `sync.md`: pull the live agent
-   (`get-channel-agent`) so you edit on top of current live content. If the local copy has unsaved
-   edits, stop and ask the owner before overwriting.
+2. Identify the agent: get `baseAgentId` + channel (`get-primary-agents` or `primary-agent list`), confirm `baseAgentType = STANDARD`.
+3. **Fetch live prompt (mandatory).** Run `get-channel-agent` so you edit on top of current live content.
 4. **Discovery Q&A** with the owner to lock the 11 elements above (iterate; don't assume).
-5. Draft **prompt v1** in `agents/primary-agent/<primary-agent-name>/<channel>/channel-agent-prompt.md`.
+5. Draft **prompt v1** (in session / doc for review — not saved under `agents/`).
 6. Review with the owner; revise wording until approved.
-7. **Sync** the approved prompt to the live `BaseAgent`:
-   `update-channel-agent` with `{ id: <baseAgentId>, prompt: <file contents> }`.
-8. Mark `channel-agent.yaml` `synced: true` + `last_synced_at`, and commit.
-9. **Test** with `testing.md` (`test-channel-agent`) and refine based on real replies (re-sync on change).
+7. **Push** the approved prompt to the live `BaseAgent`:
+   `update-channel-agent` with `{ id: <baseAgentId>, prompt: <text> }`.
+8. **Test** with `testing.md` (`test-channel-agent`) and refine based on real replies (re-push on change).
 
 ## Related SOPs
-- `sync.md` — pull-before-edit + push (run before and after editing)
+- `sync.md` — live-only agent workflow
 - `tool-calls.md` — STANDARD tools + secret handling
 - `testing.md` — test the agent after syncing
 
 ## Human-in-the-loop
-The owner approves the final prompt before it is synced/activated.
+The owner approves the final prompt before it is pushed/activated.
 
 ## Output
-- An approved `channel-agent-prompt.md` in the agent's repo folder (versioned).
-- The same prompt synced to the live `BaseAgent` on RecallSync.
+- Approved prompt text pushed to the live `BaseAgent` on RecallSync.
 
 ## Done criteria
 - [ ] `/context` read and reflected in the prompt
 - [ ] All 11 elements locked with the owner
-- [ ] `channel-agent-prompt.md` drafted, reviewed, approved
-- [ ] Synced to the live agent via `update-channel-agent`; `channel-agent.yaml` `synced: true`
+- [ ] Prompt drafted, reviewed, approved
+- [ ] Synced to the live agent via `update-channel-agent`
 - [ ] Tested via `test-channel-agent`; replies match intent

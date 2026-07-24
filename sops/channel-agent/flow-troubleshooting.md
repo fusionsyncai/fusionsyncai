@@ -21,8 +21,7 @@ subtly wrong in testing.
 1. Reproduce the issue with a clean run — **always** `clear-test-conversation` before
    `test-channel-agent` (otherwise prior turns contaminate routing).
 2. Match the symptom below.
-3. Apply the fix in `channel-agent-flow.json`, re-push the draft
-   (`set-channel-agent-flow-draft`), clear history, and re-test.
+3. Apply the fix in the live flow (UI or push via `set-channel-agent-flow-draft`), clear history, and re-test.
 4. Only `publish: true` after the owner signs off.
 
 ---

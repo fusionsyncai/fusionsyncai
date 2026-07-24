@@ -28,13 +28,12 @@ the **`ba_agent`** node; per-stage goals live in **`ba_objective`** nodes.
 | Behavior | One `prompt` on `BaseAgent` | Graph: `ba_agent` + steps + edges |
 | Routing | Implicit in one LLM turn | Explicit via objectives / conditions |
 | Handoffs | `BaseAgent.tools` (LLM tool calls) | `ba_http` nodes (deterministic HTTP) |
-| Repo artifact | `channel-agent-prompt.md` | `channel-agent-flow.json` (exact export) |
 | Live field | `BaseAgent.prompt` | `BaseAgent.currentFlow` (draft), `BaseAgent.flow` (published) |
 
 ## Flow JSON shape (v2 — canonical)
 
-The builder and runtime use **version 2** React Flow JSON. Store the **exported bundle** in AIOS
-(same shape as RecallSync export):
+The builder and runtime use **version 2** React Flow JSON. When exporting from RecallSync, the
+bundle shape is:
 
 ```json
 {
@@ -53,12 +52,8 @@ The builder and runtime use **version 2** React Flow JSON. Store the **exported 
 }
 ```
 
-For day-to-day AIOS work, the **canonical editable file** is the full bundle (or at minimum the
-`flow` object — but prefer keeping the bundle so `agentId` / metadata stay aligned):
-
-`agents/primary-agent/<primary-agent-name>/<channel>/channel-agent-flow.json`
-
-Link metadata in `channel-agent.yaml` (`baseAgentType: FLOW`, `id`, sync timestamps).
+Edit the `flow` object (or full bundle) in a scratch file or RecallSync UI — **do not** commit it
+under `agents/`. Push via MCP/CLI when ready.
 
 > Older v1 shapes (`type: "objective"`, `targetNodeId` on outcomes) are migrated to v2 on import.
 > Author **v2** only (`ba_*` node types + `edges[]`).
@@ -181,28 +176,25 @@ the endpoint" rule in `tool-calls.md`. n8n nodes in particular may expect **Basi
 
 **Role:** Terminates the flow session (`flowEndedAt` set). No outgoing edges.
 
-## Authoring process (AIOS)
+## Authoring process
 
 1. **Read `/context`.**
 2. Confirm agent: `get-primary-agents` → `baseAgentType = FLOW`, capture `baseAgentId`.
-3. **Pull latest first (mandatory).** Run pull-before-edit per `sync.md`: pull the live agent
-   (`get-channel-agent`) and full-overwrite the local `channel-agent-flow.json` from `currentFlow`
-   (then normalize secrets) so you edit on top of current live. If the local copy has unsaved edits,
-   stop and ask the owner before overwriting.
+3. **Fetch live flow (mandatory).** Run `get-channel-agent` and use `currentFlow` (fallback `flow`)
+   as the starting point.
 4. **Discovery** with owner: stages (engage → collect → handoff → post-handoff), channels, outcomes,
    webhook fields, tone per stage.
-4. **Export** current flow from RecallSync UI (or copy from a reference agent) → save as
-   `channel-agent-flow.json` under the channel folder.
-5. Edit JSON **in place** (precise changes only — preserve `id`s unless intentionally rewiring).
+5. Edit in RecallSync UI or a local scratch JSON export (precise changes only — preserve `id`s
+   unless intentionally rewiring).
 6. Validate mentally / in UI import:
    - `version: 2`, one `ba_agent`, `agentRootId` matches that node.
    - Exactly one agent→entry edge.
    - Every outcome id used in objectives has a matching edge.
    - No cycles (DAG).
    - HTTP nodes: POST + `bodyMode: ai` when fields are conversational (name, phone, summary).
-7. **Sync draft** to RecallSync `currentFlow` (see **Sync** below).
+7. **Push draft** to RecallSync `currentFlow` via `set-channel-agent-flow-draft` (see **Sync** below).
 8. **Test** per `testing.md` (clear history, multi-turn scenarios, verify HTTP at n8n).
-9. Owner approves → **publish** in UI (promotes draft to `flow`) → activate agent if ready.
+9. Owner approves → **publish** (`publish: true` or UI) → activate agent if ready.
 
 ## JSON edit rules (do / don't)
 
@@ -238,13 +230,13 @@ Primary sync path from AIOS — mirrors `saveFlowDraft` / `importFlowDraft`:
 - **Input:** `{ id: <baseAgentId>, flow: <flow object or full bundle>, publish?: boolean }`
 - **Behavior:** validates/migrates to v2 server-side, writes `currentFlow`. `publish: true` also
   promotes the draft to the live `flow` field.
-- **Secrets:** keep `${ENV_VAR}` placeholders in the committed JSON. At push time run
+- **Secrets:** use `${ENV_VAR}` placeholders in scratch JSON. At push time run
   `scripts/reconcile-flow.mjs --flow <path>` — it substitutes the env value and **encrypts** the
   bearer header, printing the reconciled JSON. Pass that JSON to the MCP tool. The agent never reads
   env files or handles plaintext.
 
-All pushes go through **MCP** (`set-channel-agent-flow-draft`). UI alternative: Import bundle / Save
-draft on the flow builder.
+All pushes go through **MCP** or **CLI** (`set-channel-agent-flow-draft` /
+`channel-agent set-flow-draft`). UI alternative: Import bundle / Save draft on the flow builder.
 
 ## Human-in-the-loop
 
@@ -253,24 +245,22 @@ publish and activation.
 
 ## Output
 
-- `channel-agent-flow.json` — exact exported bundle (versioned in Git).
-- `channel-agent.yaml` — link `id`, `baseAgentType: FLOW`, sync metadata.
-- Draft synced to `currentFlow` on RecallSync via MCP (`set-channel-agent-flow-draft`).
+- Draft synced to `currentFlow` on RecallSync via MCP/CLI (`set-channel-agent-flow-draft`).
 
 ## Done criteria
 
 - [ ] `/context` read; `ba_agent` prompt reflects brand + channel
 - [ ] Each `ba_objective` has clear goal, instructions, and wired outcomes
 - [ ] `ba_http` handoff fields + URL confirmed with owner; secrets not in Git
-- [ ] `channel-agent-flow.json` committed; edges/outcome ids consistent
+- [ ] Edges/outcome ids consistent
 - [ ] Draft on RecallSync (`currentFlow`); tested per `testing.md`
 - [ ] Owner approved publish / activation
 
 ## Related SOPs
 
-- `sync.md` — pull-before-edit + push (live wins on pull, local wins on push)
+- `sync.md` — live-only agent workflow
 - `prompting-standard.md` — single-prompt agents
 - `tool-calls.md` — STANDARD `BaseAgent.tools` (FLOW uses `ba_http` instead)
 - `testing.md` — test lead, clear history, multi-turn FLOW notes
-- `creation.md` — provision agent + folder layout
+- `creation.md` — provision agent
 - `flow-troubleshooting.md` — real failure patterns + fixes (eager routing, outcome misfires, branch leakage, chatty post-handoff)

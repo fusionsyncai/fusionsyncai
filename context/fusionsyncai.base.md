@@ -1,148 +1,131 @@
 # FusionSync.ai — AIOS Context Pack
 
-## 1) What FusionSync.ai is
+## 1) What FusionSync is
 
-FusionSync is positioned as an **Instagram-to-WhatsApp inbound operating system** for event companies. The homepage says it combines Instagram DM automation, WhatsApp lead qualification, CRM synchronization, conversational AI workflows, inbound sales automation, and closer routing into one operating system. It is designed to turn Instagram and WhatsApp inquiries into booking-ready conversations. :contentReference[oaicite:0]{index=0}
+FusionSync is a **white-label tech partner for agency owners**. Positioning from
+[fusionsync.ai](https://www.fusionsync.ai/):
 
-The site consistently frames the product as a **managed inbound system**, not a DIY software tool. The “Done-for-You” page says FusionSync builds, hosts, monitors, and tunes the system, rather than handing over software for the client to manage alone. :contentReference[oaicite:1]{index=1}
+> Your clients need software. You keep the relationship. We build and deliver.
 
----
+We partner with agency owners who already serve a **vertical** and have **paying clients**
+asking for software, CRM bridges, or automation they cannot fulfil in-house. We white-label the
+product, wire local integrations, and run white-glove implementation per client. **You stay the
+face. We stay invisible.**
 
-## 2) Core positioning
+This is **not** a freelancer marketplace pitch, not a chatbot agency, and not generic body-shop
+outsourcing. Shubham Kashyap leads every partnership; a small team ships on GHL, n8n, Next.js,
+TypeScript, PostgreSQL, Stripe, and modern AI stacks.
 
-FusionSync’s primary niche today is **event companies** that sell through Instagram and WhatsApp. The About page explicitly says it is an inbound operating system for event companies, with the product and narrative centered on Instagram-to-WhatsApp pipelines, closer-ready handoffs, and peak-season resilience. :contentReference[oaicite:2]{index=2}
+**Public video:** *White-Glove Tech Partner — Part 1* (homepage hero) — same story as the site.
 
-The site also positions itself as a better alternative to DIY chatbot tools. On the comparison page, FusionSync says ManyChat is for DIY chatbot builders, while FusionSync is for teams that want a managed inbound system that connects Instagram, WhatsApp, CRM sync, and human closer handoff. :contentReference[oaicite:3]{index=3}
+## 2) ICP (ideal customer)
 
----
+**Agency owners** who:
 
-## 3) What the system does
+- Already have **paying clients in one vertical** (dental, insurance, real estate, creator
+  monetization, etc.) — not leads, active accounts
+- Feel a **daily service gap** — clients ask for software, integrations, or patient/client
+  workflows they cannot ship without a tech team
+- Have enough **volume in pipeline** that white-label fulfilment beats hiring developers or
+  saying no
+- Bring **local integration knowledge** — they know what software their market runs; we build
+  the bridge
 
-FusionSync’s inbound flow is basically:
+**Not ICP:** idea-stage solo founders, speculative builds, partners with no signed clients yet,
+cold prospects, generic "need a developer" posts, enterprise RFPs, pure design-only.
 
-1. Instagram DMs/comments captured  
-2. Leads qualified in-thread  
-3. Handoff to WhatsApp with full history  
-4. CRM fields and context synced  
-5. Booking-ready thread sent to closers :contentReference[oaicite:4]{index=4}
+## 3) Offer & partnership model (public)
 
-The site also frames this as solving inbound lead breakdowns like slow response, weak follow-up, poor routing, and delayed qualification. The use-cases page is explicit about these pain points. :contentReference[oaicite:5]{index=5}
+Typical partner engagement: **$20k+** (exact scope depends on vertical, client count, and phase).
 
----
+| Phase | What happens |
+|-------|----------------|
+| **Phase 1 — Stack first** | First ~5 clients on proven stack: GoHighLevel, n8n, local integrations. No custom software yet — fast, working systems. |
+| **Phase 2 — Software** | Production-grade vertical software, white-label, under their brand. Zero dev overhead on their end. |
+| **25 clients** | Partner owns software for their market; FusionSync steps back from that geography |
+| **100 clients** | Partner owns globally; FusionSync replicates in next market |
 
-## 4) Primary offers currently visible on the site
+**Then choose:** Path A — white-glove continuation (ops retainer), or Path B — full handoff + train
+internal team.
 
-### Done-for-you inbound operating system
-This is the main delivery offer. It starts with a 7-day production pilot and is built around Instagram, WhatsApp, and CRM handoff. :contentReference[oaicite:6]{index=6}
+## 4) What we deliver
 
-### Free AI audit
-The site offers a free AI audit of the sales process. It maps the Instagram/WhatsApp/CRM flow, identifies leak points like missed DMs, cold handoffs, and late sync, and returns a written “AI fix order.” :contentReference[oaicite:7]{index=7}
+Three layers of white-label fulfilment:
 
-### ReCallSync
-ReCallSync is presented as an AI SDR platform. It includes AI voice campaigns, lead qualification campaigns, customer survey automation, cold calling campaigns, custom conversation flows, and intelligent workflows for lead capture and conversion. :contentReference[oaicite:8]{index=8}
+1. **Integration & automation** — GHL, n8n, webhooks, CRM bridges into software clients already run
+2. **White-label vertical software** — auth, billing, tenant isolation, UI under their brand
+3. **White-glove client implementation** — onboarding, training, setup, support per client
 
----
+**Partnership proof (on site — names anonymized where needed):**
 
-## 5) ReCallSync inside the ecosystem
+- **UK dental agency** — CRM bridge + tech fulfilment (GHL, n8n, Exact, Dentally)
+- **Creator monetization (CA)** — full software build and handover for AI influencer audience
+- **Real estate underwriting** — custom workflow software for domain-led vertical
+- **Vertical SaaS fulfilment** — production architecture, integrations, ongoing build
 
-ReCallSync is not just a side project. On the site it is positioned as an AI SDR / sales-agent platform that can create campaigns, automate lead capture and qualification, and support voice-based workflows. The product pages mention AI voice campaigns, lead qualification, survey automation, cold calling, and custom conversation flows. :contentReference[oaicite:9]{index=9}
+Legacy shipped products (still valid proof of build capability): UseCortana, IGThreadly,
+MeisterFlow.
 
-The automation content also shows ReCallSync-adjacent thinking: n8n workflow versioning to GitHub, Google Drive to Supabase knowledge-base sync, Voice AI order booking, and LinkedIn post automation with Airtable and n8n. :contentReference[oaicite:10]{index=10}
+## 5) Primary funnel → WhatsApp partnership conversation
 
----
+**Primary CTA on site and video:** message Shubham on **WhatsApp** — one conversation to map fit
+(vertical, client count, tech gap). Not Upwork-first, not founder MVP tiers.
 
-## 6) Audience and use cases
+**Upwork** remains a **credibility signal** (Top Rated Plus, 35+ deliveries) — mention briefly
+when trust matters, not as the main close:
 
-The site explicitly focuses on:
+- Freelancer: https://www.upwork.com/freelancers/shubhamkashyap
+- Agency: https://www.upwork.com/agencies/1824319881634787328
 
-- event companies :contentReference[oaicite:11]{index=11}
-- adjacent inbound businesses like hospitality/travel, local services/studios, creators/brand agencies, and coaching/programs :contentReference[oaicite:12]{index=12}
-- Bangalore startups and SaaS companies that want a deployed system rather than another tool to configure :contentReference[oaicite:13]{index=13}
-- Chandigarh sales teams that need AI SDR-style first-mile qualification and structured notes for reps :contentReference[oaicite:14]{index=14}
+Website, LinkedIn, YouTube, and outbound exist to **start partnership conversations** — not to
+close founder MVP projects on-site.
 
-So the broad pattern is:
+## 6) How we work
 
-**inbound-heavy businesses + social/messaging demand + fast handoff + CRM sync + closer-ready conversations.** :contentReference[oaicite:15]{index=15}
+**Division of work:**
 
----
+| Agency owner | FusionSync (silent partner) |
+|--------------|----------------------------|
+| Client relationships & trust | Product architecture & core build |
+| Vertical & geography knowledge | Integration bridges & automation |
+| Local software/compliance context | White-glove implementation per client |
+| Sales to existing base | Replication into new geographies |
 
-## 7) The site’s conversion model
+Stack we plug into client worlds: GoHighLevel, n8n, Make, Next.js, TypeScript, PostgreSQL,
+Prisma, Supabase, Stripe, OpenAI, Claude, LiveKit, Restack, Vercel.
 
-The site uses a very clear conversion pattern:
+## 7) Acquisition motion (AIOS-relevant)
 
-- **Free AI Audit** as low-friction entry :contentReference[oaicite:16]{index=16}
-- **Free 7-day production pilot** as the main trust-building step :contentReference[oaicite:17]{index=17}
-- Then move into a done-for-you inbound implementation that the company builds, hosts, monitors, and tunes. :contentReference[oaicite:18]{index=18}
+Agency-partnership lanes to monitor and stage as CRM contacts:
 
-The language repeatedly avoids “just a tool” framing and leans toward **operator-grade system delivery**. :contentReference[oaicite:19]{index=19}
+1. **LinkedIn** — agency owners posting about client tech gaps, GHL/n8n, white-label, "clients
+   keep asking for software"
+2. **Reddit / communities** — r/agency, r/digital_marketing, r/gohighlevel, r/n8n, r/Entrepreneur
+   (agency operators, not solo founder prototype posts)
+3. **YouTube / content inbound** — visitors from White-Glove Tech Partner video → WhatsApp
+4. **Referrals & warm intro** — operators who already have vertical client bases
 
----
+First touch = peer operator energy, **not** pitch deck. CTA when ready = **WhatsApp partnership
+conversation**.
 
-## 8) Founder / trust signals
+See `aios/intent-signal-monitor.md` for automated signal monitoring (agency-owner keywords +
+draft replies).
 
-The About pages say FusionSync is built by operators in Mohali, India, and the founder is Shubham Kashyap, who is described as a hands-on founder designing systems that convert social and messaging demand into structured sales conversations. The founder page also mentions a Top Rated Plus Upwork background. :contentReference[oaicite:20]{index=20}
+## 8) ReCallSync / AIOS (internal)
 
-This matters because the site is trying to look like:
+This repo (AIOS) operates FusionSync's agent stack on RecallSync: version-controlled prompts,
+flows, campaigns, and SOPs pushed via MCP. The local CRM (`localhost:3010`) is the **lead factory**
+for staging and enriching **agency partnership** prospects before outreach.
 
-**small, hands-on, implementation-first, technically credible, and not a random agency.** :contentReference[oaicite:21]{index=21}
+**FusionSync Primary** channel agents (live-chat, WhatsApp, Instagram, WP Call) should reflect
+white-label agency partnership positioning — not founder/Lovable prototype copy.
 
----
+**North India Dev Agency Outreach** (`405450a6-5482-48f8-9755-d7403b797b74`) is a related legacy
+campaign agent; site positioning is sharper (signed clients, phased stack → software, ownership
+milestones). Do not extend legacy copy without aligning to current homepage.
 
-## 9) Content and SEO assets on the site
+## 9) One-line summary for agents
 
-FusionSync has a blog/posts area with implementation-heavy content like:
-- speed-to-lead systems :contentReference[oaicite:22]{index=22}
-- WhatsApp flows for event lead qualification :contentReference[oaicite:23]{index=23}
-- AI SDR glossary definition :contentReference[oaicite:24]{index=24}
-- AI response / follow-up and inbound lead problem articles :contentReference[oaicite:25]{index=25}
-
-It also has an automation hub with practical workflow examples like:
-- Google Drive to Supabase knowledge-base sync
-- Voice AI order booking assistant
-- Vapi call history to Airtable
-- LinkedIn post automation with Airtable and n8n :contentReference[oaicite:26]{index=26}
-
-This makes FusionSync look less like a brochure site and more like a **systems + playbooks + implementation** brand. :contentReference[oaicite:27]{index=27}
-
----
-
-## 10) Useful assets already present on the site
-
-The site nav and internal pages already include:
-- Services
-- Portfolio
-- AI Receptionist
-- AI Agent Demos
-- Blog / Posts
-- Glossary
-- IGThreadly free Instagram tool
-- FunAway case study :contentReference[oaicite:28]{index=28}
-
-That means FusionSync already has the pieces for:
-- authority content
-- product demos
-- proof pages
-- lead capture
-- topic clusters
-- case studies :contentReference[oaicite:29]{index=29}
-
----
-
-## 11) How to think about the brand internally
-
-### FusionSync today is best described as:
-**A managed inbound operating system for event companies and other inbound-heavy businesses, built around Instagram, WhatsApp, CRM sync, qualification, and booking-ready handoff.** :contentReference[oaicite:30]{index=30}
-
-### ReCallSync is:
-**the AI SDR / sales-agent layer with voice campaigns, lead qualification, cold calling, survey automation, and conversation flows.** :contentReference[oaicite:31]{index=31}
-
-### The content engine is:
-**blog + automation hub + playbooks + city pages + use cases + glossary.** :contentReference[oaicite:32]{index=32}
-
----
-
-## 12) Best summary for AIOS
-
-If you need a single short summary for AIOS, use this:
-
-**FusionSync is a hands-on, implementation-first inbound operating system for event companies and adjacent inbound businesses. It turns Instagram and WhatsApp demand into booking-ready conversations by combining DM capture, qualification, CRM sync, and closer handoff. It offers a free AI audit and a 7-day production pilot, with a managed done-for-you model instead of DIY software. The ecosystem also includes ReCallSync, an AI SDR platform with voice campaigns, lead qualification, cold calling, and custom conversation flows, plus an automation/content layer with practical playbooks and workflows.**
+**FusionSync is the invisible tech partner for agency owners with vertical clients who need
+software — white-label fulfilment from GHL/n8n stack through production product, led by Shubham
+Kashyap, partnership conversation starts on WhatsApp.**

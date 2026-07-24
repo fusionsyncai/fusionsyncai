@@ -30,9 +30,6 @@ client sub-account). **Do not run any of the deletions in this SOP unless explic
 - New secret values for `.env.local` (see `.env.example`).
 
 ## What gets DELETED / replaced (business instance)
-- `agents/primary-agent/*` — all live agents of the previous business. **Always wipe** — never
-  carry agents across businesses (their encrypted header secrets are tied to the old
-  `ENCRYPTION_KEY` and won't decrypt under the new key).
 - `context/<old-business>*.md` (and any other previous-business context) — replace with new context.
 - `sprints/sprint-*.md` — previous business's work log / decisions.
 - `playbooks/*` (except `README.md`) — previous business's campaign definitions.
@@ -42,7 +39,7 @@ client sub-account). **Do not run any of the deletions in this SOP unless explic
 ## What gets KEPT (framework — do NOT touch)
 - `sops/**` — these procedures (including this one).
 - `recallsync/**`, `scripts/**`.
-- `agents/_template/**` and every `README.md`.
+- `agents/README.md` (agents live in RecallSync only).
 - Registry / config templates: `.env.example`, `.cursor/.mcp.example.json`, `.gitignore`,
   `.cursorignore`, `LICENSE`.
 - `telegram-bridge/` source (it's configured via env, not committed secrets).
@@ -67,10 +64,6 @@ client sub-account). **Do not run any of the deletions in this SOP unless explic
 ### 2. Wipe the business instance
 > Destructive. Re-confirm with the owner before running.
 ```bash
-# agents (keep the template + README)
-git rm -r --cached agents/primary-agent/* 2>/dev/null || true
-rm -rf agents/primary-agent/*
-
 # context (remove previous-business context files)
 rm -f context/*.md            # you will re-author new context in step 4
 
@@ -108,17 +101,10 @@ find playbooks -type f ! -name 'README.md' -delete
   slug/brand):
 ```bash
 rg -i 'fusionsync|funaway|brain' \
-  --glob '!**/node_modules/**' --glob '!sops/**' --glob '!agents/_template/**'
+  --glob '!**/node_modules/**' --glob '!sops/**'
 ```
   Expected: **no hits** outside intentionally-kept framework/example files. Investigate any hit.
-- [ ] Confirm `agents/primary-agent/` contains only what you intend (typically empty until the
-  first new agent is created via `sops/channel-agent/creation.md`).
-
-### 8. Smoke-test the new connection (MCP)
-- [ ] List primary agents for the new sub-account (e.g. `get-primary-agents`). The result must be
-  the **new** business (its own / empty agents) — it must **not** show the previous business's
-  agents (e.g. no `Brain` / `FunAway`). If it shows the old agents, the api key in
-  `.cursor/mcp.json` is still the old one — fix before continuing.
+- [ ] MCP smoke test: `get-primary-agents` returns the **new** business (not the previous one).
 
 ### 9. First commit
 - [ ] Stage changes, run the pre-commit sanity check, and commit the clean baseline:
@@ -132,7 +118,7 @@ git commit -m "chore: reset AIOS repo for <new business>"
 - Step 1: explicit owner approval that a reset for a named business is intended.
 - Step 2: re-confirm before destructive deletes.
 - Step 5: never commit real secret values; missing/ambiguous secrets → ask the owner.
-- Step 8: if the smoke test shows the old business, STOP — the api key was not swapped.
+- Step 7: if the smoke test shows the old business, STOP — the api key was not swapped.
 
 ## Output
 A repo containing only the framework + the new business's identity, context, secrets, and a fresh
@@ -140,7 +126,6 @@ sprint log; the MCP resolves the **new** sub-account; no traces of the previous 
 outside intentionally-kept framework/example files.
 
 ## Done criteria
-- [ ] `agents/primary-agent/*` wiped (only `_template/` + `README.md` remain under `agents/`)
 - [ ] Previous-business `context/`, `sprints/sprint-*`, and `playbooks/*` removed/replaced
 - [ ] `context/business.yaml` + new context authored
 - [ ] `.env.local` + `.cursor/mcp.json` set with the new business's values (not committed)
@@ -150,6 +135,5 @@ outside intentionally-kept framework/example files.
 
 ## Related SOPs
 - `channel-agent/creation.md` — create the new business's first agent.
-- `channel-agent/sync.md` — pull/push + secret handling (ciphertext headers).
+- `channel-agent/sync.md` — live-only agent workflow.
 - `git-commit.md` — commit + mandatory pre-commit sanity check.
-```

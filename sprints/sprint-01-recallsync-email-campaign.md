@@ -35,7 +35,7 @@ Once this works, every future agent/campaign is just "more of the same on the sa
 - [x] Enable `recallsync-primary` MCP in Cursor and list its tools
 - [ ] Write `sops/sync-agent-to-recallsync.md` (how to push prompt.md → RecallSync agent)
 - [ ] Write `sops/run-email-campaign.md` (how to define + launch a campaign)
-- [ ] Create the first email agent: `agents/primary-agent/<name>/email/` (channel-agent.yaml + channel-agent-prompt.md)
+- [ ] Create the first email agent on RecallSync via `sops/channel-agent/creation.md` (MCP/CLI)
 - [ ] Define `human_in_loop` checkpoints for outreach (draft approval before send)
 - [ ] Provision the agent on RecallSync via MCP; commit back `recallsync.agent_id`
 - [ ] Create `playbooks/<campaign>.md` (objective, ICP, offer, sequence)

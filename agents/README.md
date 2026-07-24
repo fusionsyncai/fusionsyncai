@@ -1,47 +1,40 @@
 # Agents
 
-The folder structure mirrors RecallSync's model. This repo = **one Business** (one RecallSync sub-account).
+**RecallSync is the source of truth.** Primary agents and channel agents are **not** stored in this
+repo. Create, edit, test, and activate them live via **MCP** or the **`recallsync` CLI**.
 
-```
-agents/
-  primary-agent/
-    <primary-agent-name>/              # = RecallSync PrimaryAgent (a wrapper; no prompt)
-      primary-agent.yaml               # wrapper metadata + authored intent (goal, calendar ref)
-      <channel>/                       # email | sms | whatsapp | voice-call | ... (= a BaseAgent)
-        channel-agent.yaml             # minimal link: id, name, channel, provider, baseAgentType
-        channel-agent-prompt.md        # STANDARD only — single system prompt
-        channel-agent-flow.json        # FLOW only — exact exported flow bundle (v2)
-        tools/                         # optional — non-secret STANDARD tool specs
-```
+## Mental model (RecallSync schema)
 
-> Flat layout: `agents/primary-agent/<name>/<channel>/`. STANDARD → `channel-agent-prompt.md`.
-> FLOW → `channel-agent-flow.json` (edit JSON in place, sync to `currentFlow`). No nested
-> `channel-agents/` wrapper folder.
-
-## Mental model (from the RecallSync schema)
-
-- **Business** → this repo.
-- **PrimaryAgent** → the wrapper that groups channel agents. Carries `agentGoal`,
+- **Business** → one RecallSync sub-account (fixed by the MCP api key / `RECALL_API_KEY`).
+- **PrimaryAgent** → wrapper that groups channel agents. Carries `agentGoal`,
   `goalCompleteCriteria`, `stopScenarioDescription`, and calendar linkage. **No prompt.**
-- **BaseAgent** → the actual per-channel worker (current builder/approach). Has a `channel`, a
-  `provider`, and a `baseAgentType`.
-  - `channel`: `EMAIL | SMS | WHATSAPP | FACEBOOK | INSTAGRAM | LIVE_CHAT | VOICE_CALL | WP_VOICE_CALL`
-  - `provider`: `GHL | N8N | WHATSAPP | INSTAGRAM | TWILIO | VAPI | ...`
-  - `baseAgentType`: `STANDARD` (single prompt) | `FLOW` (multi-prompt graph)
+- **BaseAgent** (channel agent) → per-channel worker with `channel`, `provider`, and
+  `baseAgentType` (`STANDARD` | `FLOW` | `RECALL`).
 
-A PrimaryAgent has a one-to-many relation to channel agents (BaseAgents).
+## How to work with agents
 
-## What the brain stores (and does not)
+| Task | MCP tool | CLI |
+|------|----------|-----|
+| List primary agents | `get-primary-agents` | `primary-agent list` |
+| Get one channel agent | `get-channel-agent` | `channel-agent get --id` |
+| Create primary agent | `create-primary-agent` | `primary-agent create` |
+| Create channel agent | `create-channel-agent` | `channel-agent create` |
+| Update STANDARD prompt | `update-channel-agent` | `channel-agent update` |
+| Push FLOW draft | `set-channel-agent-flow-draft` | `channel-agent set-flow-draft` |
+| Test (DB-only) | `test-channel-agent` | `channel-agent test` |
 
-- **Stores (authored, versioned):** STANDARD prompts (`channel-agent-prompt.md`), FLOW graphs
-  (`channel-agent-flow.json`), the primary agent's goal/criteria/stop intent, and linking ids.
-- **Does NOT store:** secrets (HTTP auth headers, API tokens). Those are set at sync/push time in
-  RecallSync. Other runtime config (GHL ids, calendar secrets) also lives in RecallSync.
+Always pass **`--json`** on CLI commands. Wrapper: `node scripts/recallsync-cli.mjs --json …`
 
-## Notes
+## SOPs
 
-- `id` fields are filled **after** creation on RecallSync, then committed back so the repo can
-  always resolve repo prompt ↔ live agent.
-- Operational data (leads, conversations, results) never lives here.
-- To create one, follow `sops/channel-agent/creation.md`. Copy `_template/` into
-  `agents/primary-agent/<primary-agent-name>/` and rename `_channel/` to the channel slug.
+- Create: `sops/channel-agent/creation.md`, `sops/create-agent.md`
+- STANDARD prompts: `sops/channel-agent/prompting-standard.md`
+- FLOW graphs: `sops/channel-agent/prompting-flow.md`
+- Test: `sops/channel-agent/testing.md`
+- Troubleshoot flows: `sops/channel-agent/flow-troubleshooting.md`
+
+## What stays out of the repo
+
+- Agent configs, prompts, and flow graphs (live in RecallSync only).
+- Operational data (leads, conversations, results).
+- Secrets (API tokens, encrypted HTTP headers) — set in RecallSync / `.env.local` for local scripts only.
