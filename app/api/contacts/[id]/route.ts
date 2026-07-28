@@ -1,5 +1,6 @@
 import { Prisma } from "@/generated/prisma/client";
 import { deleteContact } from "@/lib/contacts-delete";
+import { normalizePhone } from "@/lib/phone";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -10,6 +11,13 @@ const EDITABLE_STRING_FIELDS = [
   "firstName",
   "lastName",
   "title",
+  "email",
+  "phone",
+  "linkedinUrl",
+  "facebookUrl",
+  "instagramUrl",
+  "youtubeUrl",
+  "twitterUrl",
   "companyName",
   "companyShortName",
   "companyWebsite",
@@ -40,6 +48,10 @@ export async function GET(
       emailStatus: true,
       phone: true,
       linkedinUrl: true,
+      facebookUrl: true,
+      instagramUrl: true,
+      youtubeUrl: true,
+      twitterUrl: true,
       companyName: true,
       companyShortName: true,
       companyWebsite: true,
@@ -177,19 +189,65 @@ export async function PATCH(
     );
   }
 
+  const existing = await prisma.contact.findUnique({
+    where: { id },
+    select: { email: true, country: true },
+  });
+  if (!existing) {
+    return Response.json({ error: "Contact not found" }, { status: 404 });
+  }
+
+  if ("phone" in data && data.phone) {
+    data.phone =
+      normalizePhone(data.phone, existing.country ?? "GB") ?? data.phone;
+  }
+
+  const updateData: Prisma.ContactUpdateInput = data;
+  if ("email" in data && data.email !== existing.email) {
+    updateData.emailStatus = "UNKNOWN";
+  }
+
   try {
     const contact = await prisma.contact.update({
       where: { id },
-      data: data as Prisma.ContactUpdateInput,
+      data: updateData,
       select: {
         id: true,
         name: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        phone: true,
+        linkedinUrl: true,
+        facebookUrl: true,
+        instagramUrl: true,
+        youtubeUrl: true,
+        twitterUrl: true,
+        emailStatus: true,
         companyName: true,
         companyShortName: true,
+        updatedAt: true,
       },
     });
-    return Response.json({ contact });
-  } catch {
+    return Response.json({
+      contact: {
+        ...contact,
+        updatedAt: contact.updatedAt.toISOString(),
+      },
+    });
+  } catch (err) {
+    if (
+      err instanceof Prisma.PrismaClientKnownRequestError &&
+      err.code === "P2002"
+    ) {
+      const target = Array.isArray(err.meta?.target)
+        ? err.meta.target.join(", ")
+        : "field";
+      return Response.json(
+        { error: `Another contact already uses this ${target}` },
+        { status: 409 },
+      );
+    }
     return Response.json({ error: "Contact not found" }, { status: 404 });
   }
 }

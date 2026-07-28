@@ -47,6 +47,9 @@ export const enrichRequestSchema = z.object({
   // When true, the agent also tries to find the contact's best work email and
   // returns it in `result.email` (the callback writes it to the email column).
   findEmail: z.boolean().default(false),
+  // When true, also extract phone + social profile URLs onto the result
+  // (CRM callback writes them to Contact columns when empty).
+  findContactChannels: z.boolean().default(false),
   // Opaque advancement gate echoed back in the callback so the CRM can decide
   // whether to advance the contact (e.g. only if `email` is now present). Not
   // interpreted by this service — it just round-trips it.
@@ -92,6 +95,12 @@ export const enrichmentResultSchema = z.object({
   // Best work email the agent found for the contact (only when findEmail). The
   // CRM callback writes this to the contact's email column when it's empty.
   email: z.string().trim().email().nullable().default(null),
+  phone: z.string().trim().min(1).nullable().default(null),
+  linkedinUrl: z.string().trim().min(1).nullable().default(null),
+  facebookUrl: z.string().trim().min(1).nullable().default(null),
+  instagramUrl: z.string().trim().min(1).nullable().default(null),
+  youtubeUrl: z.string().trim().min(1).nullable().default(null),
+  twitterUrl: z.string().trim().min(1).nullable().default(null),
   firmographics: z.object({
     companyName: nullableString,
     companyWebsite: nullableString,

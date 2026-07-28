@@ -41,6 +41,14 @@ Always pass **`--json`** so output is parseable.
 | `get-campaign-leads` | `campaign leads --id` |
 | `get-conversation-messages` | `conversation messages --id` |
 | `create-conversation-message` | `conversation create-message --body '{...}'` |
+| `list-funnel-pages` | `funnel list` |
+| `get-funnel-page` | `funnel get --id` |
+| `create-funnel-page` | `funnel create --title ... [--slug ...]` |
+| `update-funnel-page` | `funnel update --id ... --body '{...}'` |
+| `publish-funnel-page` | `funnel publish --id` |
+| `unpublish-funnel-page` | `funnel unpublish --id` |
+| `delete-funnel-page` | `funnel delete --id` |
+| `list-business-assets` | `asset list [--type IMAGE]` |
 
 Full command list: `recallsync --help`
 

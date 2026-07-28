@@ -9,7 +9,9 @@ import {
   ExternalLink,
   Loader2,
   Mail,
+  Pencil,
   Phone,
+  X,
 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -21,6 +23,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -57,6 +60,10 @@ type ContactDetail = {
   emailStatus: string;
   phone: string | null;
   linkedinUrl: string | null;
+  facebookUrl: string | null;
+  instagramUrl: string | null;
+  youtubeUrl: string | null;
+  twitterUrl: string | null;
   companyName: string | null;
   companyWebsite: string | null;
   companyDomain: string | null;
@@ -226,6 +233,86 @@ export default function ContactDetailPage({
   }, [refresh]);
 
   const [savingPipelineId, setSavingPipelineId] = useState<string | null>(null);
+  const [editingContact, setEditingContact] = useState(false);
+  const [savingContact, setSavingContact] = useState(false);
+  const [contactSaveError, setContactSaveError] = useState<string | null>(null);
+  const [contactForm, setContactForm] = useState({
+    name: "",
+    firstName: "",
+    lastName: "",
+    email: "",
+    phone: "",
+    title: "",
+    linkedinUrl: "",
+    facebookUrl: "",
+    instagramUrl: "",
+    youtubeUrl: "",
+    twitterUrl: "",
+  });
+
+  function startContactEdit() {
+    if (!contact) return;
+    setContactForm({
+      name: contact.name ?? "",
+      firstName: contact.firstName ?? "",
+      lastName: contact.lastName ?? "",
+      email: contact.email ?? "",
+      phone: contact.phone ?? "",
+      title: contact.title ?? "",
+      linkedinUrl: contact.linkedinUrl ?? "",
+      facebookUrl: contact.facebookUrl ?? "",
+      instagramUrl: contact.instagramUrl ?? "",
+      youtubeUrl: contact.youtubeUrl ?? "",
+      twitterUrl: contact.twitterUrl ?? "",
+    });
+    setEditingContact(true);
+    setContactSaveError(null);
+  }
+
+  function cancelContactEdit() {
+    setEditingContact(false);
+    setContactSaveError(null);
+  }
+
+  async function saveContactEdit() {
+    setSavingContact(true);
+    setContactSaveError(null);
+    try {
+      const payload: Record<string, string | null> = {
+        name: contactForm.name.trim(),
+        firstName: contactForm.firstName.trim() || null,
+        lastName: contactForm.lastName.trim() || null,
+        email: contactForm.email.trim() || null,
+        phone: contactForm.phone.trim() || null,
+        title: contactForm.title.trim() || null,
+        linkedinUrl: contactForm.linkedinUrl.trim() || null,
+        facebookUrl: contactForm.facebookUrl.trim() || null,
+        instagramUrl: contactForm.instagramUrl.trim() || null,
+        youtubeUrl: contactForm.youtubeUrl.trim() || null,
+        twitterUrl: contactForm.twitterUrl.trim() || null,
+      };
+
+      const response = await fetch(`/api/contacts/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!response.ok) {
+        const data = (await response.json().catch(() => null)) as {
+          error?: string;
+        } | null;
+        throw new Error(data?.error ?? "Failed to update contact");
+      }
+      setEditingContact(false);
+      await refresh();
+    } catch (err) {
+      setContactSaveError(
+        err instanceof Error ? err.message : "Failed to update contact",
+      );
+    } finally {
+      setSavingContact(false);
+    }
+  }
 
   async function updatePlacement(
     pipelineId: string,
@@ -314,10 +401,203 @@ export default function ContactDetailPage({
         <div className="space-y-6 lg:col-span-2">
           {/* Contact details */}
           <Card>
-            <CardHeader className="border-b">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 border-b">
               <CardTitle>Contact</CardTitle>
+              {!editingContact ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={startContactEdit}
+                >
+                  <Pencil className="mr-1.5 size-3.5" />
+                  Edit
+                </Button>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={cancelContactEdit}
+                    disabled={savingContact}
+                  >
+                    <X className="mr-1.5 size-3.5" />
+                    Cancel
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={() => void saveContactEdit()}
+                    disabled={savingContact || !contactForm.name.trim()}
+                  >
+                    {savingContact ? (
+                      <Loader2 className="mr-1.5 size-3.5 animate-spin" />
+                    ) : null}
+                    Save
+                  </Button>
+                </div>
+              )}
             </CardHeader>
             <CardContent className="grid gap-4 pt-4 sm:grid-cols-2">
+              {contactSaveError ? (
+                <p className="text-sm text-destructive sm:col-span-2">
+                  {contactSaveError}
+                </p>
+              ) : null}
+              {editingContact ? (
+                <>
+                  <div className="space-y-1 sm:col-span-2">
+                    <label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                      Display name
+                    </label>
+                    <Input
+                      value={contactForm.name}
+                      onChange={(e) =>
+                        setContactForm((f) => ({ ...f, name: e.target.value }))
+                      }
+                      placeholder="Contact or company name"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                      Email
+                    </label>
+                    <Input
+                      type="email"
+                      value={contactForm.email}
+                      onChange={(e) =>
+                        setContactForm((f) => ({ ...f, email: e.target.value }))
+                      }
+                      placeholder="name@company.com"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                      Phone
+                    </label>
+                    <Input
+                      type="tel"
+                      value={contactForm.phone}
+                      onChange={(e) =>
+                        setContactForm((f) => ({ ...f, phone: e.target.value }))
+                      }
+                      placeholder="+44 ..."
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                      First name
+                    </label>
+                    <Input
+                      value={contactForm.firstName}
+                      onChange={(e) =>
+                        setContactForm((f) => ({
+                          ...f,
+                          firstName: e.target.value,
+                        }))
+                      }
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                      Last name
+                    </label>
+                    <Input
+                      value={contactForm.lastName}
+                      onChange={(e) =>
+                        setContactForm((f) => ({
+                          ...f,
+                          lastName: e.target.value,
+                        }))
+                      }
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                      Title
+                    </label>
+                    <Input
+                      value={contactForm.title}
+                      onChange={(e) =>
+                        setContactForm((f) => ({ ...f, title: e.target.value }))
+                      }
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                      LinkedIn URL
+                    </label>
+                    <Input
+                      value={contactForm.linkedinUrl}
+                      onChange={(e) =>
+                        setContactForm((f) => ({
+                          ...f,
+                          linkedinUrl: e.target.value,
+                        }))
+                      }
+                      placeholder="https://linkedin.com/in/..."
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                      Facebook URL
+                    </label>
+                    <Input
+                      value={contactForm.facebookUrl}
+                      onChange={(e) =>
+                        setContactForm((f) => ({
+                          ...f,
+                          facebookUrl: e.target.value,
+                        }))
+                      }
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                      Instagram URL
+                    </label>
+                    <Input
+                      value={contactForm.instagramUrl}
+                      onChange={(e) =>
+                        setContactForm((f) => ({
+                          ...f,
+                          instagramUrl: e.target.value,
+                        }))
+                      }
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                      YouTube URL
+                    </label>
+                    <Input
+                      value={contactForm.youtubeUrl}
+                      onChange={(e) =>
+                        setContactForm((f) => ({
+                          ...f,
+                          youtubeUrl: e.target.value,
+                        }))
+                      }
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                      Twitter / X URL
+                    </label>
+                    <Input
+                      value={contactForm.twitterUrl}
+                      onChange={(e) =>
+                        setContactForm((f) => ({
+                          ...f,
+                          twitterUrl: e.target.value,
+                        }))
+                      }
+                    />
+                  </div>
+                </>
+              ) : (
+                <>
               <Field
                 label="Email"
                 value={
@@ -358,6 +638,68 @@ export default function ContactDetailPage({
                 }
               />
               <Field label="Title" value={contact.title} />
+              <Field
+                label="Facebook"
+                value={
+                  contact.facebookUrl ? (
+                    <a
+                      href={contact.facebookUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1 text-primary hover:underline"
+                    >
+                      Profile <ExternalLink className="size-3" />
+                    </a>
+                  ) : null
+                }
+              />
+              <Field
+                label="Instagram"
+                value={
+                  contact.instagramUrl ? (
+                    <a
+                      href={contact.instagramUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1 text-primary hover:underline"
+                    >
+                      Profile <ExternalLink className="size-3" />
+                    </a>
+                  ) : null
+                }
+              />
+              <Field
+                label="YouTube"
+                value={
+                  contact.youtubeUrl ? (
+                    <a
+                      href={contact.youtubeUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1 text-primary hover:underline"
+                    >
+                      Channel <ExternalLink className="size-3" />
+                    </a>
+                  ) : null
+                }
+              />
+              <Field
+                label="Twitter / X"
+                value={
+                  contact.twitterUrl ? (
+                    <a
+                      href={contact.twitterUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1 text-primary hover:underline"
+                    >
+                      Profile <ExternalLink className="size-3" />
+                    </a>
+                  ) : null
+                }
+              />
+                </>
+              )}
             </CardContent>
           </Card>
 
