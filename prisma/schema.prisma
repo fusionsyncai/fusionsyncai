@@ -47,6 +47,10 @@ model Contact {
   emailStatus EmailStatus @default(UNKNOWN) @map("email_status")
   phone       String?
   linkedinUrl String?     @unique @map("linkedin_url")
+  facebookUrl String?     @map("facebook_url")
+  instagramUrl String?    @map("instagram_url")
+  youtubeUrl  String?     @map("youtube_url")
+  twitterUrl  String?     @map("twitter_url")
 
   // Location (mirrors RecallSync Lead: country, ianaTimezone, city, state).
   // country is ISO-3166 alpha-2 (e.g. "IN"); timezone is IANA (e.g. "Asia/Kolkata").
@@ -93,6 +97,8 @@ model Contact {
   campaigns CampaignContact[]
   pipelines PipelineContact[]
   gmScraperQueries GmScraperQueryContact[]
+  leadListMembers LeadListMember[]
+  outreachItems   OutreachItem[]
 
   @@index([quality])
   @@index([enrichmentStatus])
@@ -444,6 +450,7 @@ model GmScraperQuery {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   contacts GmScraperQueryContact[]
+  leadList LeadList?
 
   @@index([status, createdAt])
   @@map("gm_scraper_queries")
@@ -461,6 +468,160 @@ model GmScraperQueryContact {
   @@id([queryId, contactId])
   @@index([contactId])
   @@map("gm_scraper_query_contacts")
+}
+
+// ---------------------------------------------------------------------------
+// Outreach — profiles, channel items, timeline (see signals/PRODUCT-SPEC.md)
+// Campaign pipeline stage "Add to Profile" admits contacts here.
+// ---------------------------------------------------------------------------
+
+model OutreachProfile {
+  id String @id @default(uuid())
+
+  name           String  @unique
+  slug           String  @unique
+  icpDescription String? @map("icp_description") @db.Text
+  voiceNotes     String? @map("voice_notes") @db.Text
+  active         Boolean @default(true)
+
+  // Draft templates — editable in Outreach → Settings. Vars: {{first_name}},
+  // {{company_short}}, {{opening_hook}}, {{your_name}}, {{post_topic}}
+  signerName               String? @map("signer_name")
+  emailSubjectTemplate     String? @map("email_subject_template") @db.Text
+  emailBodyTemplate        String? @map("email_body_template") @db.Text
+  linkedinConnectionTemplate String? @map("linkedin_connection_template") @db.Text
+  linkedinCommentTemplate  String? @map("linkedin_comment_template") @db.Text
+  redditCommentTemplate    String? @map("reddit_comment_template") @db.Text
+
+  // Few-shot prompt for enrichment personalizedHighlight (opener line)
+  enrichmentPrompt String? @map("enrichment_prompt") @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  items OutreachItem[]
+
+  @@map("outreach_profiles")
+}
+
+enum OutreachPipeline {
+  EMAIL
+  LINKEDIN
+  REDDIT
+  EMAIL_LINKEDIN
+}
+
+enum OutreachItemStatus {
+  PENDING
+  SENT
+  REPLIED
+  SUCCESS
+  SKIP
+}
+
+enum LeadListSource {
+  GMB
+  SALES_NAVIGATOR
+  MANUAL
+}
+
+enum OutreachTimelineAuthor {
+  SYSTEM
+  USER
+}
+
+enum OutreachTimelineType {
+  DRAFT
+  NOTE_SENT
+  NOTE_RECEIVED
+  STATUS_CHANGE
+}
+
+model LeadList {
+  id String @id @default(uuid())
+
+  name        String
+  profileSlug String          @default("dental-agency-uk") @map("profile_slug")
+  source      LeadListSource
+  defaultPipeline OutreachPipeline? @map("default_pipeline")
+
+  gmScraperQueryId String? @unique @map("gm_scraper_query_id")
+  gmScraperQuery   GmScraperQuery? @relation(fields: [gmScraperQueryId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  members       LeadListMember[]
+  outreachItems OutreachItem[]
+
+  @@index([source])
+  @@map("lead_lists")
+}
+
+model LeadListMember {
+  leadListId String @map("lead_list_id")
+  contactId  String @map("contact_id")
+
+  notes      String?
+  promotedAt DateTime? @map("promoted_at")
+  addedAt    DateTime  @default(now()) @map("added_at")
+
+  leadList LeadList @relation(fields: [leadListId], references: [id], onDelete: Cascade)
+  contact  Contact  @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  @@id([leadListId, contactId])
+  @@index([contactId])
+  @@map("lead_list_members")
+}
+
+model OutreachItem {
+  id String @id @default(uuid())
+
+  profileId String          @map("profile_id")
+  profile   OutreachProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  contactId String?  @map("contact_id")
+  contact   Contact? @relation(fields: [contactId], references: [id], onDelete: SetNull)
+
+  // Legacy — campaign is the list source now; nullable for old rows
+  leadListId String?   @map("lead_list_id")
+  leadList   LeadList? @relation(fields: [leadListId], references: [id], onDelete: SetNull)
+
+  pipeline      OutreachPipeline
+  status        OutreachItemStatus   @default(PENDING)
+  signalContext String?              @map("signal_context") @db.Text
+  sourceUrl     String?              @map("source_url")
+
+  drafts Json?
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  timeline OutreachTimelineEntry[]
+
+  @@unique([profileId, contactId, pipeline])
+  @@index([status])
+  @@index([pipeline])
+  @@index([profileId, pipeline, status])
+  @@index([contactId])
+  @@map("outreach_items")
+}
+
+model OutreachTimelineEntry {
+  id String @id @default(uuid())
+
+  outreachItemId String       @map("outreach_item_id")
+  outreachItem   OutreachItem @relation(fields: [outreachItemId], references: [id], onDelete: Cascade)
+
+  type     OutreachTimelineType
+  author   OutreachTimelineAuthor
+  body     String               @db.Text
+  metadata Json?
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([outreachItemId, createdAt])
+  @@map("outreach_timeline_entries")
 }
 
 // ---------------------------------------------------------------------------

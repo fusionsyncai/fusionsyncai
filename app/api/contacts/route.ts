@@ -178,13 +178,8 @@ export async function POST(request: Request) {
     );
   }
 
-  // The schema has no facebookUrl column; keep it in customData (alongside any
-  // caller-provided customData) so social links are captured without migration.
   const facebookUrl = optionalString(body?.facebookUrl);
-  const baseCustomData = jsonObject(body?.customData) ?? {};
-  const customData: Prisma.InputJsonObject | undefined = facebookUrl
-    ? { ...baseCustomData, facebookUrl }
-    : jsonObject(body?.customData);
+  const customData = jsonObject(body?.customData);
 
   const data: Prisma.ContactCreateInput = {
     name,
@@ -199,6 +194,7 @@ export async function POST(request: Request) {
     city: optionalString(body?.city),
     state: optionalString(body?.state),
     linkedinUrl: optionalString(body?.linkedinUrl),
+    facebookUrl,
     companyName: optionalString(body?.companyName),
     companyWebsite,
     companyDomain: optionalString(body?.companyDomain),

@@ -8,6 +8,7 @@ import {
   MapPin,
   Megaphone,
   ScrollText,
+  Send,
   Users,
   Zap,
 } from "lucide-react";
@@ -24,6 +25,11 @@ const navItems = [
     title: "Contacts",
     href: "/contacts",
     icon: Users,
+  },
+  {
+    title: "Outreach",
+    href: "/outreach",
+    icon: Send,
   },
   {
     title: "Campaigns",

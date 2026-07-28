@@ -56,13 +56,13 @@ export function parseAgentJson(
   return { reply: fallback, sessionId: null };
 }
 
-function runCursorAgent(prompt: string): Promise<AgentResult> {
+function runCursorAgent(prompt: string, model: string): Promise<AgentResult> {
   const config = getConfig();
   const cmd = [
     config.cursorAgentBin,
     "-p",
     "--model",
-    config.cursorModel,
+    model,
     "--output-format",
     "json",
   ];
@@ -118,7 +118,7 @@ function customShapeForPrompt(request: EnrichRequest): Record<string, string> {
   return shape;
 }
 
-function buildPrompt(request: EnrichRequest): string {
+function buildPrompt(request: EnrichRequest, modelLabel: string): string {
   const seed = request.seed;
   const hasCustom = request.outputs.length > 0;
 
@@ -144,6 +144,14 @@ function buildPrompt(request: EnrichRequest): string {
   if (request.findEmail) {
     lines.push(
       "- Find the contact's best professional/work email. Prefer a verifiable address found on the company site, contact/about pages, or public profiles. If none is found, infer the most likely address from the company's confirmed email pattern + domain. Return it in `email`. Use null only if you cannot determine a plausible address. Never invent a random mailbox.",
+    );
+  }
+
+  if (request.findContactChannels) {
+    lines.push(
+      "- Extract contact channels from the company website (footer, contact page, about, social icons). Return each as a top-level field; use null when not found. Do not invent.",
+      "  phone: main business phone as written on the site (CRM will normalize).",
+      "  linkedinUrl, facebookUrl, instagramUrl, youtubeUrl, twitterUrl: full profile/page URLs when present (twitter.com or x.com both ok).",
     );
   }
 
@@ -193,6 +201,16 @@ function buildPrompt(request: EnrichRequest): string {
     JSON.stringify(
       {
         ...(request.findEmail ? { email: "string(email)|null" } : {}),
+        ...(request.findContactChannels
+          ? {
+              phone: "string|null",
+              linkedinUrl: "url|null",
+              facebookUrl: "url|null",
+              instagramUrl: "url|null",
+              youtubeUrl: "url|null",
+              twitterUrl: "url|null",
+            }
+          : {}),
         firmographics: {
           companyName: "string|null",
           companyWebsite: "string|null",
@@ -214,7 +232,7 @@ function buildPrompt(request: EnrichRequest): string {
         provenance: {
           sources: [{ title: "string|null", url: "url", note: "string|null" }],
           confidence: "number 0..1",
-          model: "cursor-agent",
+          model: modelLabel,
           ranAt: new Date().toISOString(),
         },
         custom: hasCustom ? customShapeForPrompt(request) : {},
@@ -288,10 +306,11 @@ function parseEnrichment(
   return result;
 }
 
-export async function researchCompany(
+async function researchWithModel(
   request: EnrichRequest,
+  model: string,
 ): Promise<EnrichmentResult> {
-  const prompt = buildPrompt(request);
+  const prompt = buildPrompt(request, model);
 
   let lastError: unknown;
   for (let attempt = 1; attempt <= 2; attempt++) {
@@ -299,31 +318,34 @@ export async function researchCompany(
       attempt === 1
         ? prompt
         : `${prompt}\n\nYour previous answer was invalid. Return ONLY a valid JSON object matching the schema. No markdown.`,
+      model,
     );
 
     if (result.exitCode !== 0 && !result.reply.trim()) {
-      throw new Error(`cursor-agent exited with code ${result.exitCode}`);
+      throw new Error(
+        `cursor-agent (${model}) exited with code ${result.exitCode}`,
+      );
     }
 
     try {
-      return parseEnrichment(result.reply, request);
+      const parsed = parseEnrichment(result.reply, request);
+      if (parsed.provenance && typeof parsed.provenance === "object") {
+        parsed.provenance.model = model;
+      }
+      return parsed;
     } catch (err) {
       lastError = err;
-      // The agent often replies with prose ("I found a ...") or a half-baked
-      // object instead of strict JSON. Log a redacted snippet of what it
-      // actually returned so we can see the real cause instead of just the
-      // opaque "Unexpected token" JSON.parse error.
       const snippet = result.reply
         .slice(0, 1000)
         .replace(/\s+/g, " ")
         .trim();
       logWarn(
-        `[enrichment] parse failed for contact ${request.contactId} (attempt ${attempt}/2, exitCode ${result.exitCode}, replyLen ${result.reply.length}): ${
+        `[enrichment] parse failed for contact ${request.contactId} (model=${model}, attempt ${attempt}/2, exitCode ${result.exitCode}, replyLen ${result.reply.length}): ${
           err instanceof Error ? err.message : String(err)
         }`,
       );
       logWarn(
-        `[enrichment] raw agent reply (contact ${request.contactId}, attempt ${attempt}): ${
+        `[enrichment] raw agent reply (contact ${request.contactId}, model=${model}, attempt ${attempt}): ${
           snippet || "<empty reply>"
         }`,
       );
@@ -333,4 +355,25 @@ export async function researchCompany(
   throw lastError instanceof Error
     ? lastError
     : new Error("Invalid enrichment JSON");
+}
+
+export async function researchCompany(
+  request: EnrichRequest,
+): Promise<EnrichmentResult> {
+  const config = getConfig();
+  const { cursorPrimaryModel, cursorFallbackModel } = config;
+
+  try {
+    return await researchWithModel(request, cursorPrimaryModel);
+  } catch (primaryErr) {
+    if (cursorPrimaryModel === cursorFallbackModel) {
+      throw primaryErr;
+    }
+    logWarn(
+      `[enrichment] model ${cursorPrimaryModel} failed for contact ${request.contactId}, retrying with ${cursorFallbackModel}: ${
+        primaryErr instanceof Error ? primaryErr.message : String(primaryErr)
+      }`,
+    );
+    return researchWithModel(request, cursorFallbackModel);
+  }
 }

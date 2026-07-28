@@ -40,3 +40,7 @@ export async function createTag(input: CreateTagInput) {
     },
   });
 }
+
+export async function findOrCreateTagByName(name: string) {
+  return createTag({ name });
+}

@@ -218,7 +218,7 @@ server.listen(config.port, () => {
   logInfo(`[enrichment] repo cwd: ${config.cursorAgentCwd}`);
   logInfo(`[enrichment] repo root: ${REPO_ROOT}`);
   logInfo(
-    `[enrichment] cursor-agent: ${config.cursorAgentBin} (model=${config.cursorModel})`,
+    `[enrichment] cursor-agent: ${config.cursorAgentBin} (primary=${config.cursorPrimaryModel}, fallback=${config.cursorFallbackModel})`,
   );
   logInfo(`[enrichment] concurrency: ${config.concurrency}`);
 });
